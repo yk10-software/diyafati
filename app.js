@@ -435,8 +435,9 @@
   function sendOrder(d, mode) {
     const orderId = 'D' + String(Date.now()).slice(-5);
     const url = `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(buildMessage(d, mode, orderId))}`;
-    const win = window.open(url, '_blank', 'noopener');
-    if (!win) window.location.href = url;
+    const win = window.open(url, '_blank');
+    if (win) { try { win.opener = null; } catch (e) {} }
+    else window.location.href = url;
     cart = [];
     saveCart();
     openSheet(`

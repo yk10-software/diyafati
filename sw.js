@@ -1,8 +1,8 @@
 /* ضيافتي — بيخلّي التطبيق يفتح بسرعة وحتى لو النت ضعيف.
-   كل ما تعدّل ملفات وترفعها، غيّر رقم النسخة هون (v1 → v2) لحتى يوصل التحديث للزباين. */
-const CACHE = 'diyafati-v4';
+   كل ما تعدّل ملفات وترفعها، كبّر رقم النسخة هون، وكمان رقم ?v= بـ index.html و admin.html وبالقائمة تحت. */
+const CACHE = 'diyafati-v5';
 const SHELL = [
-  './', 'index.html', 'admin.html', 'styles.css', 'data.js', 'app.js', 'admin.js',
+  './', 'index.html', 'admin.html', 'styles.css?v=5', 'data.js?v=5', 'app.js?v=5', 'admin.js?v=5',
   'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-64.png',
   'img/logo-mark.png', 'img/logo-word.png', 'img/logo-full.png',
@@ -33,7 +33,7 @@ self.addEventListener('fetch', e => {
   // الصفحات: من النت أول شي (لحتى تبيّن التحديثات)، وإذا ما في نت من الذاكرة
   if (req.mode === 'navigate') {
     e.respondWith(
-      fetch(req)
+      fetch(req, { cache: 'no-cache' })
         .then(res => { const copy = res.clone(); caches.open(CACHE).then(c => c.put(req, copy)); return res; })
         .catch(() => caches.match(req).then(r => r || caches.match('index.html')))
     );

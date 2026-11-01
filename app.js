@@ -313,7 +313,7 @@
   }
   function formatDate(iso) {
     const [y, m, d] = iso.split('-').map(Number);
-    return new Date(y, m - 1, d).toLocaleDateString('ar-SY-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'numeric' });
+    return new Date(y, m - 1, d).toLocaleDateString('ar-SY-u-nu-latn', { weekday: 'long', day: 'numeric', month: 'long' });
   }
   function formatTime(hm) {
     let [h, m] = hm.split(':').map(Number);
@@ -604,6 +604,8 @@
   }
 
   /* ---------- البداية ---------- */
+  if (demoExpired()) { showDemoExpired(); return; }
+  addDemoStrip();
   if (history.state && history.state.overlay) history.replaceState(null, '');
   $('#waLink').href = `https://wa.me/${CONFIG.whatsapp}`;
   if (!CONFIG.demo) {

@@ -276,5 +276,6 @@
     render();
   });
 
-  if (isAuthed()) showPanel();
+  if (demoExpired()) showDemoExpired();
+  else if (isAuthed()) showPanel();
 })();

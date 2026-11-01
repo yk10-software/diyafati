@@ -365,3 +365,15 @@ button { cursor: pointer; }
 .add-img small { font-size: 13px; }
 .check { display: flex; align-items: center; gap: 10px; margin: 6px 0; font-size: 15px; }
 .check input { width: 20px; height: 20px; accent-color: var(--cocoa); }
+
+/* النسخة التجريبية */
+.demo-strip {
+  background: var(--cocoa); color: var(--butter);
+  text-align: center; font-size: 14px; font-weight: 500;
+  padding: 8px 16px; padding-top: max(8px, env(safe-area-inset-top));
+}
+.expired { min-height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 32px 24px; background: var(--butter); }
+.expired img { height: 120px; width: auto; margin-bottom: 18px; }
+.expired h1 { font-family: var(--f-display); font-weight: 500; color: var(--cocoa); font-size: 28px; margin: 0 0 8px; line-height: 1.3; }
+.expired p { margin: 0 0 24px; max-width: 300px; }
+.expired .btn { max-width: 320px; }

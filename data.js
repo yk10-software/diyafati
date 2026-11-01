@@ -11,6 +11,10 @@ const CONFIG = {
   // خلّيها true بالنسخة التجريبية، ورجعها false بالنسخة الحقيقية
   demo: true,
   adminPin: '1234',
+  // آخر يوم للنسخة التجريبية، بعده بيوقف التطبيق وبتطلع رسالة التفعيل
+  demoUntil: '2026-11-09T23:59:59+03:00',
+  // رابط واتساب YK10 Software للتفعيل
+  activateLink: 'https://wa.me/message/6LHRU6HTBT2EO1',
 };
 
 const CATEGORIES = [
@@ -153,4 +157,36 @@ function normalizeAr(s) {
     .replace(/ى/g, 'ي')
     .toLowerCase()
     .trim();
+}
+
+/* النسخة التجريبية: الشريط وتاريخ الانتهاء */
+function demoExpired() {
+  return CONFIG.demo && CONFIG.demoUntil && Date.now() > new Date(CONFIG.demoUntil).getTime();
+}
+
+function demoEndLabel() {
+  return new Date(CONFIG.demoUntil).toLocaleDateString('ar-SY-u-nu-latn', {
+    weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Damascus',
+  });
+}
+
+function addDemoStrip() {
+  if (!CONFIG.demo) return;
+  const app = document.querySelector('.app');
+  const strip = document.createElement('div');
+  strip.className = 'demo-strip';
+  strip.textContent = 'نسخة تجريبية، بتنتهي ' + demoEndLabel();
+  app.prepend(strip);
+}
+
+function showDemoExpired() {
+  document.querySelectorAll('.cartbar, .overlay, .story-view').forEach(el => el.remove());
+  document.body.style.overflow = '';
+  document.querySelector('.app').innerHTML = `
+    <div class="expired">
+      <img src="img/logo-full.png" alt="ضيافتي" width="100" height="120">
+      <h1>انتهت الفترة التجريبية</h1>
+      <p>لتفعيل تطبيق ضيافتي، تواصل مع <bdi>YK10 Software</bdi></p>
+      <a class="btn" href="${CONFIG.activateLink}" target="_blank" rel="noopener">تواصل لتفعيل التطبيق</a>
+    </div>`;
 }

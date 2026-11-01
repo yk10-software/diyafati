@@ -1,6 +1,6 @@
 /* ضيافتي — بيخلّي التطبيق يفتح بسرعة وحتى لو النت ضعيف.
    كل ما تعدّل ملفات وترفعها، غيّر رقم النسخة هون (v1 → v2) لحتى يوصل التحديث للزباين. */
-const CACHE = 'diyafati-v1';
+const CACHE = 'diyafati-v2';
 const SHELL = [
   './', 'index.html', 'admin.html', 'styles.css', 'data.js', 'app.js', 'admin.js',
   'manifest.webmanifest',

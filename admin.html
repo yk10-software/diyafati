@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>لوحة تحكم ضيافتي</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#F9F7A4">
+  <link rel="icon" type="image/png" href="icons/favicon-64.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app admin">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="فتح التطبيق">
+        <img class="mark" src="img/logo-mark.png" alt="" width="38" height="40">
+        <img class="word" src="img/logo-word.png" alt="ضيافتي" width="97" height="26">
+      </a>
+      <a class="btn-sm as-link" href="./">فتح التطبيق</a>
+    </header>
+
+    <!-- الدخول -->
+    <section class="gate" id="gate">
+      <img src="img/logo-full.png" alt="" width="100" height="120">
+      <h1>لوحة التحكم</h1>
+      <form id="gateForm" novalidate>
+        <label class="field" id="pinField">
+          <span>كلمة السر</span>
+          <input id="pin" type="password" inputmode="numeric" autocomplete="current-password">
+          <span class="err">كلمة السر غلط، جرّب مرة تانية.</span>
+        </label>
+        <button class="btn" type="submit">دخول</button>
+      </form>
+      <p class="hint" id="pinHint"></p>
+    </section>
+
+    <!-- اللوحة -->
+    <section id="panel" hidden>
+      <div class="a-head">
+        <h1>أصناف المحل</h1>
+        <p id="summary"></p>
+      </div>
+      <p class="demo-note" id="demoNote">نسخة تجريبية: التعديلات بتنحفظ على هالجهاز بس. بالنسخة الحقيقية، أي تعديل بيوصل لكل الزباين فوراً.</p>
+      <div class="a-tools">
+        <button class="btn" id="addBtn">إضافة صنف</button>
+        <label class="search">
+          <span class="visually-hidden">ابحث عن صنف</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+          <input type="search" id="aSearch" placeholder="ابحث عن صنف" autocomplete="off">
+        </label>
+      </div>
+      <div id="list" class="a-list"></div>
+      <div class="a-foot">
+        <button class="link-btn" id="resetBtn">رجّع الأصناف الأصلية</button>
+      </div>
+    </section>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="admin.js"></script>
+</body>
+</html>

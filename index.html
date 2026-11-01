@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>ضيافتي</title>
+  <meta name="description" content="ضيافة وأزهار لمناسباتكم. اطلب من ضيافتي مباشرة، توصيل أو بموعد محدد.">
+  <meta name="theme-color" content="#F9F7A4">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" href="icons/favicon-64.png">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="ضيافتي">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <div class="shelf">
+      <header class="topbar">
+        <a class="brand" href="./" aria-label="ضيافتي، الصفحة الرئيسية">
+          <img class="mark" src="img/logo-mark.png" alt="" width="38" height="40">
+          <img class="word" src="img/logo-word.png" alt="ضيافتي" width="97" height="26">
+        </a>
+        <button class="icon-btn" id="cartBtn" aria-label="السلة">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.2 11.1a2 2 0 0 1-2 1.9H8.2a2 2 0 0 1-2-1.9L5 8Z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg>
+          <span class="badge" id="cartCount" hidden>0</span>
+        </button>
+      </header>
+      <p class="tagline">ضيافة وأزهار لمناسباتكم</p>
+      <nav class="stories" id="stories" aria-label="قصص من شغلنا"></nav>
+    </div>
+
+    <div class="install" id="installBar" hidden>
+      <img src="icons/icon-192.png" alt="">
+      <p><b>نزّل تطبيق ضيافتي</b>بيصير عندك بأيقونة على شاشة الموبايل</p>
+      <button class="btn-sm" id="installBtn">تثبيت</button>
+      <button class="x" id="installClose" aria-label="إخفاء">×</button>
+    </div>
+
+    <label class="search">
+      <span class="visually-hidden">ابحث عن صنف</span>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input type="search" id="search" placeholder="ابحث عن صنف" autocomplete="off">
+    </label>
+
+    <div class="chips" id="chips" role="toolbar" aria-label="الأقسام"></div>
+
+    <main class="grid" id="grid" aria-live="polite"></main>
+
+    <footer class="footer">
+      <img src="img/logo-full.png" alt="ضيافتي" width="60" height="72">
+      <p>عندك سؤال؟ <a id="waLink" href="#" target="_blank" rel="noopener">راسلنا عالواتساب</a></p>
+      <p><a href="admin.html">لوحة التحكم</a></p>
+      <p class="credit" id="credit">نسخة تجريبية من تصميم وتطوير <a href="https://yk10-software.netlify.app" target="_blank" rel="noopener">YK10 Software</a></p>
+    </footer>
+  </div>
+
+  <button class="cartbar" id="cartBar" hidden>
+    <span id="cartBarCount">السلة</span>
+    <span id="cartBarTotal"></span>
+  </button>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

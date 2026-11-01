@@ -161,6 +161,8 @@ function normalizeAr(s) {
 
 /* النسخة التجريبية: الشريط وتاريخ الانتهاء */
 function demoExpired() {
+  // للمعاينة: افتح الرابط مع ?preview=expired لتشوف شاشة الانتهاء قبل وقتها
+  try { if (new URLSearchParams(location.search).get('preview') === 'expired') return true; } catch (e) {}
   return CONFIG.demo && CONFIG.demoUntil && Date.now() > new Date(CONFIG.demoUntil).getTime();
 }
 

@@ -12,7 +12,7 @@ const CONFIG = {
   demo: true,
   adminPin: '1234',
   // آخر يوم للنسخة التجريبية، بعده بيوقف التطبيق وبتطلع رسالة التفعيل
-  demoUntil: '2026-11-09T23:59:59+03:00',
+  demoUntil: '2026-11-02T23:59:59+03:00',
   // رابط واتساب YK10 Software للتفعيل
   activateLink: 'https://wa.me/message/6LHRU6HTBT2EO1',
 };

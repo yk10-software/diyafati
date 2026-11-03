@@ -334,9 +334,6 @@ button { cursor: pointer; }
 .form-msg { color: var(--danger); font-size: 14px; line-height: 1.5; margin: 0 0 12px; text-align: start; }
 .form-msg:empty { display: none; }
 .form-msg.ok { color: var(--whats); }
-.top-actions { display: flex; align-items: center; gap: 8px; }
-.btn-sm.ghost { background: transparent; color: var(--cocoa); border: 1.5px solid var(--cocoa); }
-.btn-sm[hidden] { display: none; }
 .muted-line { color: var(--muted); margin: -6px 0 16px; font-size: 14px; }
 .sheet-sub { font-family: var(--f-display); font-weight: 500; color: var(--cocoa); font-size: 18px; margin: 0 0 12px; }
 
@@ -376,6 +373,87 @@ button { cursor: pointer; }
 .add-img small { font-size: 13px; }
 .check { display: flex; align-items: center; gap: 10px; margin: 6px 0; font-size: 15px; }
 .check input { width: 20px; height: 20px; accent-color: var(--cocoa); }
+
+/* ---------- اللوحة الحقيقية (على design/panel.html) ---------- */
+body.in-panel .topbar { display: none; }
+body.in-panel .toast { bottom: calc(150px + var(--safe-b)); }
+.p-head {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--butter); display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px 12px; padding-top: max(14px, env(safe-area-inset-top));
+}
+.p-head img { height: 36px; width: auto; }
+.p-head h1 { margin: 0; font-family: var(--f-display); font-weight: 500; font-size: 24px; color: var(--cocoa); line-height: 1.2; }
+.p-head small { display: block; font-size: 13px; color: var(--muted); font-weight: 500; }
+.p-body { padding-bottom: 20px; }
+.p-pad { padding: 14px 16px 0; }
+
+/* الشريط تحت */
+.a-nav {
+  position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); z-index: 30;
+  width: 100%; max-width: 520px; background: #fff; border-top: 1px solid var(--line);
+  display: grid; grid-template-columns: repeat(3, 1fr); padding: 8px 4px calc(10px + var(--safe-b));
+}
+.a-nav button {
+  position: relative; border: 0; background: none; padding: 4px 0;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  font-size: 12.5px; font-weight: 500; color: var(--muted);
+}
+.a-nav svg { width: 24px; height: 24px; }
+.a-nav [aria-current="page"] { color: var(--cocoa); font-weight: 600; }
+.a-nav [aria-current="page"]::before { content: ''; position: absolute; top: -9px; width: 28px; height: 3px; border-radius: 2px; background: var(--cocoa); }
+
+/* الأصناف */
+.fab {
+  position: fixed; z-index: 25; bottom: calc(84px + var(--safe-b)); left: max(16px, calc(50% - 244px));
+  height: 50px; padding: 0 20px; border: 0; border-radius: 25px;
+  background: var(--cocoa); color: var(--butter); font-weight: 600;
+  display: flex; align-items: center; gap: 8px; box-shadow: 0 6px 18px rgba(58, 38, 20, .3);
+}
+.fab svg { width: 20px; height: 20px; }
+.tag { font-family: var(--f-body); font-size: 11px; font-weight: 600; color: #B4561F; background: #FBE9DC; border-radius: 8px; padding: 1px 7px; margin-inline-start: 6px; vertical-align: 2px; }
+.tag.muted { color: var(--muted); background: var(--photo); }
+/* الصنف اللي ما إله صورة: قوس زبدي ولوغو ضيافتي */
+.ph { display: grid; place-items: center; background: var(--butter); border-radius: var(--arch); }
+.a-row .ph { width: 56px; height: 70px; }
+.a-row .ph img { width: 30px; height: auto; border-radius: 0; background: none; object-fit: contain; }
+.a-row.off .ph { opacity: .5; }
+
+/* الأقسام */
+.crows { padding: 6px 16px 0; }
+.crow { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); background: var(--sugar); }
+.crow.fresh { background: var(--butter-soft); margin: 0 -16px; padding: 12px 16px; }
+.crow.dragging { position: relative; z-index: 2; background: var(--butter-soft); border-radius: 12px; box-shadow: 0 6px 18px rgba(58, 38, 20, .15); }
+.grip { border: 0; background: none; padding: 8px 2px; color: #C9BE9A; touch-action: none; cursor: grab; }
+.grip svg { width: 20px; height: 20px; display: block; }
+.crow .nm { flex: 1; min-width: 0; line-height: 1.4; }
+.crow .nm b { font-family: var(--f-display); font-weight: 500; font-size: 17px; color: var(--cocoa); }
+.crow .nm > span { display: block; font-size: 13px; color: var(--muted); }
+.crow .act { display: flex; gap: 6px; }
+.sq { width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--line); background: var(--butter-soft); color: var(--cocoa); display: grid; place-items: center; }
+.sq svg { width: 17px; height: 17px; }
+.newcat { display: flex; gap: 8px; padding: 16px 16px 0; }
+.newcat input { flex: 1; min-width: 0; height: 46px; padding: 0 12px; border: 1.5px dashed var(--cocoa); border-radius: 12px; background: var(--sugar); }
+.newcat .btn-sm { height: 46px; padding: 0 18px; }
+
+/* الإعدادات */
+.a-card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 2px 14px; }
+.open-row { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
+.open-row p { margin: 0; flex: 1; line-height: 1.4; }
+.open-row b { display: block; font-weight: 600; }
+.open-row span { font-size: 13px; color: var(--muted); }
+.sec { display: flex; justify-content: space-between; align-items: baseline; margin: 22px 2px 8px; }
+.sec h2 { margin: 0; font-family: var(--f-display); font-weight: 500; font-size: 19px; color: var(--cocoa); }
+.sec small { color: var(--muted); font-size: 13px; }
+.srow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.srow .lbl { flex: 1; min-width: 0; border: 0; background: none; padding: 0; text-align: start; line-height: 1.4; }
+.srow .lbl b { display: block; font-weight: 500; font-size: 15px; }
+.srow .lbl b small { color: var(--muted); font-weight: 400; font-size: 12px; }
+.srow .lbl span { display: block; font-size: 13px; color: var(--muted); }
+.fee { width: 104px; height: 38px; border: 1px solid var(--line); border-radius: 9px; background: var(--sugar); text-align: center; font-weight: 600; direction: ltr; }
+.fee::placeholder { font-weight: 400; font-size: 12px; color: var(--muted); }
+.add-row { display: block; width: 100%; border: 0; background: none; padding: 12px 0; color: var(--cocoa); font-weight: 600; text-align: start; }
+.caption { margin: 6px 2px 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
 
 /* النسخة التجريبية */
 .demo-strip {

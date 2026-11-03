@@ -11,16 +11,25 @@
   <link rel="stylesheet" href="styles.css?v=6">
 </head>
 <body>
+  <!-- الأيقونات (من design/panel.html) -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5v-9Z"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9"/></symbol>
+    <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2 5.5 5.5"/></symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16v4Z"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/></symbol>
+    <symbol id="i-grip" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></symbol>
+  </svg>
+
   <div class="app admin">
     <header class="topbar">
       <a class="brand" href="./" aria-label="فتح التطبيق">
         <img class="mark" src="img/logo-mark.png" alt="" width="38" height="40">
         <img class="word" src="img/logo-word.png" alt="ضيافتي" width="97" height="26">
       </a>
-      <div class="top-actions">
-        <button class="btn-sm ghost" id="accountBtn" hidden>حسابي</button>
-        <a class="btn-sm as-link" href="./">فتح التطبيق</a>
-      </div>
+      <a class="btn-sm as-link" href="./">فتح التطبيق</a>
     </header>
 
     <!-- لحظة التحقق من الجلسة -->
@@ -60,25 +69,18 @@
       </form>
     </section>
 
-    <!-- اللوحة -->
+    <!-- اللوحة: هيدر الشاشة + المحتوى + الشريط تحت -->
     <section id="panel" hidden>
-      <div class="a-head">
-        <h1>أصناف المحل</h1>
-        <p id="summary"></p>
-      </div>
-      <p class="demo-note" id="demoNote">الأصناف بهالشاشة لسا محفوظة على هالجهاز بس. بالخطوة الجاية بتنربط بـ Supabase وبيوصل أي تعديل لكل الزباين.</p>
-      <div class="a-tools">
-        <button class="btn" id="addBtn">إضافة صنف</button>
-        <label class="search">
-          <span class="visually-hidden">ابحث عن صنف</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-          <input type="search" id="aSearch" placeholder="ابحث عن صنف" autocomplete="off">
-        </label>
-      </div>
-      <div id="list" class="a-list"></div>
-      <div class="a-foot">
-        <button class="link-btn" id="resetBtn">رجّع الأصناف الأصلية</button>
-      </div>
+      <header class="p-head">
+        <img src="img/logo-mark.png" alt="" width="38" height="40">
+        <div><h1 id="pTitle"></h1><small id="pSub"></small></div>
+      </header>
+      <main id="view" class="p-body"></main>
+      <nav class="a-nav" aria-label="أقسام اللوحة">
+        <button type="button" data-go="products"><svg aria-hidden="true"><use href="#i-box"/></svg>الأصناف</button>
+        <button type="button" data-go="categories"><svg aria-hidden="true"><use href="#i-grid"/></svg>الأقسام</button>
+        <button type="button" data-go="settings"><svg aria-hidden="true"><use href="#i-gear"/></svg>الإعدادات</button>
+      </nav>
     </section>
   </div>
 
@@ -90,5 +92,15 @@
   <script src="supa.js?v=6"></script>
   <script src="data.js?v=6"></script>
   <script src="admin.js?v=6"></script>
+  <script src="admin-products.js?v=6"></script>
+  <script src="admin-categories.js?v=6"></script>
+  <script src="admin-settings.js?v=6"></script>
+  <script>
+    // الشريط تحت: كل زر بيفتح شاشته
+    document.querySelector('.a-nav').addEventListener('click', e => {
+      const b = e.target.closest('[data-go]');
+      if (b) location.hash = b.dataset.go;
+    });
+  </script>
 </body>
 </html>

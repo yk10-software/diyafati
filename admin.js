@@ -1,59 +1,138 @@
 /* =========================================================
-   ضيافتي — لوحة التحكم
-   إضافة وتعديل وإخفاء وحذف الأصناف
+   ضيافتي — لوحة التحكم: الأساس
+   هون: تسجيل الدخول، والتنقل بين الشاشات، وتحميل البيانات من Supabase،
+   وأدوات مشتركة (نوافذ، إشعارات، صور).
+   كل شاشة بملف لحالها:
+     admin-products.js   الأصناف
+     admin-categories.js الأقسام
+     admin-settings.js   الإعدادات (التوصيل، الدفع، الطلبات)
+   الملفات بتتشارك بالكائن `A`.
    ========================================================= */
-(() => {
+const A = (() => {
   'use strict';
 
   const $ = (s, el = document) => el.querySelector(s);
-  const UNITS = ['كيلو', 'قطعة', 'علبة', 'باقة'];
-  const NOTE_DEFAULT = 'اكتب التفاصيل اللي بدك ياها (اسم، تاريخ...)';
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 
-  let products = Store.load();
-  let query = '';
-
-  /* ---------- الدخول (Supabase Auth) ----------
-     الدخول بالإيميل وكلمة السر، وبعدها منسأل is_admin().
-     إذا الحساب مو بجدول admins منطلّعه فوراً. */
+  // كل بيانات المحل بعد التحميل
+  const state = { settings: null, cats: [], products: [], zones: [], accounts: [] };
+  const views = {};          // كل ملف شاشة بيسجّل حاله هون
   let user = null;
 
-  function showGate() {
-    user = null;
-    $('#booting').hidden = true;
-    $('#panel').hidden = true;
-    $('#accountBtn').hidden = true;
-    $('#gate').hidden = false;
-    closeSheet();
-  }
-  function showPanel(u) {
-    user = u;
-    $('#booting').hidden = true;
-    $('#gate').hidden = true;
-    $('#panel').hidden = false;
-    $('#accountBtn').hidden = false;
-    render();
+  /* ---------- أدوات صغيرة ---------- */
+  const icon = name => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
+
+  // العدد بالعربي: 1 صنف، 2 صنفين، 3-10 أصناف، 11+ صنف
+  function countAr(n, one, two, few) {
+    if (n === 1) return one;
+    if (n === 2) return two;
+    return n + ' ' + (n >= 3 && n <= 10 ? few : one);
   }
 
-  async function isAdmin() {
-    const { data, error } = await sb.rpc('is_admin');
+  // بيقرأ رقم من خانة: بيقبل الأرقام العربية (٢٥٠) والإنكليزية، وبيتجاهل الفواصل والمسافات.
+  // خانة فاضية ← null، شي مو رقم ← NaN
+  function num(str) {
+    const s = String(str ?? '').trim()
+      .replace(/[٠-٩]/g, d => d.charCodeAt(0) - 0x0660)
+      .replace(/[۰-۹]/g, d => d.charCodeAt(0) - 0x06F0)
+      .replace(/[,\s٬]/g, '').replace('٫', '.');
+    return s === '' ? null : Number(s);
+  }
+
+  // كل طلب لـ Supabase بيمرّ من هون: إذا في خطأ منرميه لحتى يمسكه catch
+  async function db(query) {
+    const { data, error } = await query;
     if (error) throw error;
-    return data === true;
+    return data;
   }
 
-  // بيشيل الأحمر عن الحقل لما يبلّش يكتب
+  function dbErrorAr(err) {
+    const code = (err && err.code) || '';
+    if (/fetch|network/i.test((err && err.message) || '')) return 'ما في نت، أو الاتصال ضعيف. جرّب كمان مرة.';
+    if (code === '42501' || code === 'PGRST301') return 'ما عندك صلاحية. سجّل خروج وفوت من جديد.';
+    if (code === '23505') return 'هاد موجود من قبل.';
+    console.error(err);
+    return 'ما انحفظ، جرّب كمان مرة.';
+  }
+  const fail = err => toast(dbErrorAr(err));
+
+  /* ---------- تحميل كل البيانات ---------- */
+  async function loadAll() {
+    const [settings, cats, products, zones, accounts] = await Promise.all([
+      db(sb.from('settings').select('*').eq('id', 1).single()),
+      db(sb.from('categories').select('*').order('sort_order').order('id')),
+      db(sb.from('products').select('*').order('id', { ascending: false })),
+      db(sb.from('delivery_zones').select('*').order('sort_order').order('id')),
+      db(sb.from('payment_accounts').select('*').order('sort_order').order('id')),
+    ]);
+    Object.assign(state, { settings, cats, products, zones, accounts });
+  }
+
+  /* ---------- التنقل بين الشاشات (#products، #categories، #settings) ---------- */
+  function current() {
+    const name = location.hash.slice(1);
+    return views[name] ? name : 'products';
+  }
+  function render() {
+    if (!user) return;
+    const name = current();
+    const view = views[name];
+    $('#pTitle').textContent = view.title;
+    refreshHead();
+    $$('.a-nav button').forEach(b => b.setAttribute('aria-current', b.dataset.go === name ? 'page' : 'false'));
+    closeSheet();
+    view.render($('#view'));
+    window.scrollTo(0, 0);
+  }
+  // العنوان الصغير تحت عنوان الشاشة (متل «152 صنف، منهن 147 متوفر»)
+  function refreshHead() {
+    const view = views[current()];
+    $('#pSub').textContent = view.sub ? view.sub() : '';
+  }
+  window.addEventListener('hashchange', render);
+
+  /* ---------- النوافذ اللي بتطلع من تحت ---------- */
+  let sheetEl = null;
+  function openSheet(html) {
+    closeSheet();
+    const ov = document.createElement('div');
+    ov.className = 'overlay';
+    ov.innerHTML = `<div class="sheet" role="dialog" aria-modal="true"><div class="grab"></div>${html}</div>`;
+    ov.addEventListener('click', e => { if (e.target === ov || e.target.closest('.close, [data-close]')) closeSheet(); });
+    document.body.appendChild(ov);
+    document.body.style.overflow = 'hidden';
+    sheetEl = ov;
+    return ov.firstElementChild;
+  }
+  function closeSheet() {
+    if (!sheetEl) return;
+    sheetEl.remove();
+    sheetEl = null;
+    document.body.style.overflow = '';
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
+
+  // زر بدّه كبستين (للحذف): أول كبسة بتغيّر النص، التانية بتنفّذ
+  function confirmTwice(btn, text, action) {
+    let armed = false;
+    btn.addEventListener('click', () => {
+      if (!armed) { armed = true; btn.dataset.label = btn.textContent; btn.textContent = text; return; }
+      action();
+    });
+  }
+
+  /* ---------- أدوات الفورمات ---------- */
   function clearOnInput(form, msgEl) {
     form.addEventListener('input', e => {
       const f = e.target.closest('.field');
       if (f) f.classList.remove('invalid');
-      msgEl.textContent = '';
-      msgEl.classList.remove('ok');
+      if (msgEl) { msgEl.textContent = ''; msgEl.classList.remove('ok'); }
     });
   }
-  // بيعلّم الحقول الفاضية، وبيرجّع true إذا كلشي معبّى
   function requireFields(form, names) {
     let ok = true;
     names.forEach(n => {
-      const empty = !form[n].value.trim();
+      const empty = !form.elements[n].value.trim();
       form.querySelector(`[data-f="${n}"]`).classList.toggle('invalid', empty);
       if (empty) ok = false;
     });
@@ -64,6 +143,105 @@
     btn.disabled = on;
     if (on) { btn.dataset.label = btn.textContent; btn.textContent = 'لحظة...'; }
     else if (btn.dataset.label) btn.textContent = btn.dataset.label;
+  }
+
+  /* ---------- إشعار صغير ---------- */
+  let toastTimer;
+  function toast(msg) {
+    document.querySelectorAll('.toast').forEach(t => t.remove());
+    const t = document.createElement('div');
+    t.className = 'toast';
+    t.setAttribute('role', 'status');
+    t.textContent = msg;
+    document.body.appendChild(t);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.remove(), 2600);
+  }
+
+  /* ---------- الصور ----------
+     منصغّر الصورة بالمتصفح لـ 900px قبل الرفع، وبترتفع على سطل images. */
+  const BUCKET = 'images';
+
+  function resizeImage(file, max = 900) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        const r = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * r);
+        c.height = Math.round(img.height * r);
+        const ctx = c.getContext('2d');
+        ctx.fillStyle = '#fff';               // الـ PNG الشفاف بيصير أبيض بدل أسود
+        ctx.fillRect(0, 0, c.width, c.height);
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        c.toBlob(b => (b ? resolve(b) : reject(new Error('bad image'))), 'image/jpeg', 0.8);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('bad image')); };
+      img.src = url;
+    });
+  }
+
+  async function uploadImage(blob, folder) {
+    // randomUUID بتشتغل بس على https أو localhost، فإذا فتحت اللوحة من الموبايل على IP اللابتوب منستعمل البديل
+    const id = crypto.randomUUID ? crypto.randomUUID()
+      : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+    const path = `${folder}/${id}.jpg`;
+    await db(sb.storage.from(BUCKET).upload(path, blob, { contentType: 'image/jpeg', cacheControl: '31536000' }));
+    return sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+  }
+
+  // بيحذف الصور من السطل (بس اللي إلنا، مش صور img/ تبع الموقع)
+  async function removeImages(urls) {
+    const marker = `/storage/v1/object/public/${BUCKET}/`;
+    const paths = urls.filter(u => u && u.includes(marker)).map(u => decodeURIComponent(u.split(marker)[1]));
+    if (!paths.length) return;
+    try { await db(sb.storage.from(BUCKET).remove(paths)); }
+    catch (err) { console.warn('ما قدرنا نحذف صور قديمة', err); }   // مو مشكلة كبيرة، بتضل بالسطل
+  }
+
+  // الصنف اللي ما إله صورة: كرت بهوية ضيافتي (قوس زبدي ولوغو)
+  function thumb(src, cls = '') {
+    return src
+      ? `<img class="${cls}" src="${escapeHTML(src)}" alt="" loading="lazy">`
+      : `<span class="ph ${cls}"><img src="img/logo-mark.png" alt=""></span>`;
+  }
+
+  /* =========================================================
+     تسجيل الدخول (Supabase Auth)
+     بالإيميل وكلمة السر، وبعدها منسأل is_admin().
+     إذا الحساب مو بجدول admins منطلّعه فوراً.
+     ========================================================= */
+  function showGate() {
+    user = null;
+    document.body.classList.remove('in-panel');
+    $('#booting').hidden = true;
+    $('#panel').hidden = true;
+    $('#gate').hidden = false;
+    closeSheet();
+  }
+  async function showPanel(u) {
+    user = u;
+    $('#booting').hidden = false;
+    $('#booting').textContent = 'عم نحمّل بيانات المحل...';
+    $('#gate').hidden = true;
+    try {
+      await loadAll();
+    } catch (err) {
+      $('#booting').textContent = dbErrorAr(err);
+      return;
+    }
+    $('#booting').hidden = true;
+    document.body.classList.add('in-panel');
+    $('#panel').hidden = false;
+    render();
+  }
+
+  async function isAdmin() {
+    const { data, error } = await sb.rpc('is_admin');
+    if (error) throw error;
+    return data === true;
   }
 
   const loginForm = $('#loginForm');
@@ -119,7 +297,7 @@
     msg.textContent = 'إذا الإيميل مسجّل عنا، رح يوصلك رابط خلال دقايق. شيّك كمان على الـ Spam.';
   });
 
-  // حسابي: تغيير كلمة السر وتسجيل الخروج
+  // حسابي: تغيير كلمة السر وتسجيل الخروج (بيفتح من شاشة الإعدادات)
   function openAccount() {
     const sheet = openSheet(`
       <div class="sheet-head"><h2>حسابي</h2><button class="close" aria-label="إغلاق">×</button></div>
@@ -186,7 +364,6 @@
       showGate();
     });
   }
-  $('#accountBtn').addEventListener('click', openAccount);
 
   // أول ما تفتح الصفحة: إذا في جلسة محفوظة وصاحبها أدمن، منفتح اللوحة دغري
   async function boot() {
@@ -210,243 +387,14 @@
       $('#loginMsg').textContent = authErrorAr(err);
     }
   }
+  // منستنى ملفات الشاشات تنحمّل كلها قبل ما نبلّش
+  document.addEventListener('DOMContentLoaded', boot);
 
-  /* ---------- القائمة ---------- */
-  const catName = id => (CATEGORIES.find(c => c.id === id) || {}).name || '';
-
-  function render() {
-    const total = products.length;
-    const on = products.filter(p => p.available !== false).length;
-    $('#summary').textContent = `${total} ${total === 1 ? 'صنف' : total === 2 ? 'صنفين' : total <= 10 ? 'أصناف' : 'صنف'}، منهن ${on} متوفر`;
-
-    let list = products;
-    if (query) {
-      const q = normalizeAr(query);
-      list = list.filter(p => normalizeAr(p.name).includes(q));
-    }
-    if (!list.length) {
-      $('#list').innerHTML = query
-        ? '<div class="empty"><b>ما في نتائج</b>جرّب كلمة تانية.</div>'
-        : '<div class="empty"><b>ما في أصناف لسا</b>اضغط «إضافة صنف» لتضيف أول صنف.</div>';
-      return;
-    }
-    $('#list').innerHTML = list.map(p => `
-      <div class="a-row${p.available === false ? ' off' : ''}" data-id="${p.id}">
-        <img src="${escapeHTML(p.images[0] || 'icons/icon-192.png')}" alt="">
-        <div class="a-info">
-          <b>${escapeHTML(p.name)}</b>
-          <span>${escapeHTML(catName(p.cat))}</span>
-          <span class="price">${formatPrice(p.price)} <small>/ ${escapeHTML(p.unit)}</small></span>
-        </div>
-        <div class="a-actions">
-          <label class="switch" title="متوفر">
-            <input type="checkbox" data-toggle="${p.id}" ${p.available !== false ? 'checked' : ''} aria-label="${escapeHTML(p.name)} متوفر">
-            <span></span>
-          </label>
-          <button class="link-btn" data-edit="${p.id}">تعديل</button>
-        </div>
-      </div>`).join('');
-  }
-
-  function persist(msg) {
-    if (Store.save(products)) {
-      if (msg) toast(msg);
-      return true;
-    }
-    toast('ما انحفظ: ذاكرة الجهاز امتلت. جرّب صورة أصغر.');
-    products = Store.load();
-    return false;
-  }
-
-  /* ---------- نافذة الإضافة والتعديل ---------- */
-  let current = null;
-  function openSheet(html) {
-    closeSheet();
-    const ov = document.createElement('div');
-    ov.className = 'overlay';
-    ov.innerHTML = `<div class="sheet tall" role="dialog" aria-modal="true"><div class="grab"></div>${html}</div>`;
-    ov.addEventListener('click', e => { if (e.target === ov || e.target.closest('.close')) closeSheet(); });
-    document.body.appendChild(ov);
-    document.body.style.overflow = 'hidden';
-    current = ov;
-    return ov.firstElementChild;
-  }
-  function closeSheet() {
-    if (!current) return;
-    current.remove();
-    current = null;
-    document.body.style.overflow = '';
-  }
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeSheet(); });
-
-  function resizeImage(file, max = 900) {
-    return new Promise((resolve, reject) => {
-      const url = URL.createObjectURL(file);
-      const img = new Image();
-      img.onload = () => {
-        const r = Math.min(1, max / Math.max(img.width, img.height));
-        const c = document.createElement('canvas');
-        c.width = Math.round(img.width * r);
-        c.height = Math.round(img.height * r);
-        c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
-        URL.revokeObjectURL(url);
-        resolve(c.toDataURL('image/jpeg', 0.78));
-      };
-      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('bad image')); };
-      img.src = url;
-    });
-  }
-
-  function openEditor(id) {
-    const existing = products.find(p => p.id === id);
-    const p = existing ? JSON.parse(JSON.stringify(existing)) : {
-      id: 'p' + Date.now().toString(36), name: '', cat: CATEGORIES[1].id, price: '',
-      unit: 'كيلو', images: [], desc: '', available: true,
-    };
-    const isNew = !existing;
-
-    const sheet = openSheet(`
-      <div class="sheet-head"><h2>${isNew ? 'صنف جديد' : 'تعديل الصنف'}</h2><button class="close" aria-label="إغلاق">×</button></div>
-      <form id="pForm" novalidate>
-        <div class="field"><span>الصور</span></div>
-        <div class="imgs" id="imgs"></div>
-        <label class="field" data-f="name">
-          <span>اسم الصنف</span>
-          <input name="name" value="${escapeHTML(p.name)}" maxlength="60">
-          <span class="err">اكتب اسم الصنف.</span>
-        </label>
-        <div class="two">
-          <label class="field" data-f="price">
-            <span>السعر (${CONFIG.currency})</span>
-            <input name="price" type="number" inputmode="numeric" min="0" step="50" value="${escapeHTML(p.price)}">
-            <span class="err">اكتب السعر.</span>
-          </label>
-          <label class="field">
-            <span>السعر لكل</span>
-            <select name="unit">${UNITS.map(u => `<option ${u === p.unit ? 'selected' : ''}>${u}</option>`).join('')}</select>
-          </label>
-        </div>
-        <label class="field">
-          <span>القسم</span>
-          <select name="cat">${CATEGORIES.filter(c => c.id !== 'all').map(c => `<option value="${c.id}" ${c.id === p.cat ? 'selected' : ''}>${escapeHTML(c.name)}</option>`).join('')}</select>
-        </label>
-        <label class="field">
-          <span>الوصف <small>(اختياري)</small></span>
-          <textarea name="desc" rows="3" maxlength="300">${escapeHTML(p.desc)}</textarea>
-        </label>
-        <label class="check"><input type="checkbox" name="available" ${p.available !== false ? 'checked' : ''}> متوفر وبيبيّن للزباين</label>
-        <label class="check"><input type="checkbox" name="custom" ${p.customNote ? 'checked' : ''}> الزبون بيكتب تفاصيل خاصة (متل نص الطباعة)</label>
-        <button class="btn" type="submit" style="margin-top:18px">${isNew ? 'إضافة الصنف' : 'حفظ التعديلات'}</button>
-        ${isNew ? '' : '<button class="btn danger" type="button" id="delBtn" style="margin-top:10px">حذف الصنف</button>'}
-      </form>
-    `);
-
-    function renderImgs() {
-      $('#imgs', sheet).innerHTML = p.images.map((src, i) => `
-        <div class="img-slot"><img src="${escapeHTML(src)}" alt=""><button type="button" data-rm="${i}" aria-label="شيل الصورة">×</button></div>
-      `).join('') + `
-        <label class="img-slot add-img">
-          <input type="file" accept="image/*" hidden id="imgInput">
-          <span>+</span><small>صورة</small>
-        </label>`;
-    }
-    renderImgs();
-
-    sheet.addEventListener('change', async e => {
-      if (e.target.id !== 'imgInput' || !e.target.files[0]) return;
-      try {
-        p.images.push(await resizeImage(e.target.files[0]));
-        renderImgs();
-      } catch (err) {
-        toast('ما قدرنا نفتح هالصورة. جرّب صورة تانية.');
-      }
-    });
-    sheet.addEventListener('click', e => {
-      const rm = e.target.closest('[data-rm]');
-      if (rm) { p.images.splice(Number(rm.dataset.rm), 1); renderImgs(); }
-    });
-
-    const form = $('#pForm', sheet);
-    form.addEventListener('input', e => { const f = e.target.closest('.field'); if (f) f.classList.remove('invalid'); });
-    form.addEventListener('submit', e => {
-      e.preventDefault();
-      const fd = new FormData(form);
-      const name = String(fd.get('name')).trim();
-      const price = Number(fd.get('price'));
-      form.querySelector('[data-f="name"]').classList.toggle('invalid', !name);
-      form.querySelector('[data-f="price"]').classList.toggle('invalid', !(price > 0));
-      if (!name || !(price > 0)) return;
-
-      Object.assign(p, {
-        name, price,
-        unit: fd.get('unit'),
-        cat: fd.get('cat'),
-        desc: String(fd.get('desc')).trim(),
-        available: fd.get('available') === 'on',
-      });
-      if (fd.get('custom') === 'on') p.customNote = p.customNote || NOTE_DEFAULT;
-      else delete p.customNote;
-
-      const before = JSON.stringify(products);
-      if (isNew) products.unshift(p);
-      else products[products.findIndex(x => x.id === p.id)] = p;
-      if (!persist(isNew ? 'انضاف الصنف' : 'انحفظت التعديلات')) { products = JSON.parse(before); return; }
-      closeSheet();
-      render();
-    });
-
-    const del = $('#delBtn', sheet);
-    if (del) {
-      let armed = false;
-      del.addEventListener('click', () => {
-        if (!armed) { armed = true; del.textContent = 'اضغط مرة تانية لتأكيد الحذف'; return; }
-        products = products.filter(x => x.id !== p.id);
-        persist('انحذف الصنف');
-        closeSheet();
-        render();
-      });
-    }
-  }
-
-  /* ---------- إشعار صغير ---------- */
-  let toastTimer;
-  function toast(msg) {
-    document.querySelectorAll('.toast').forEach(t => t.remove());
-    const t = document.createElement('div');
-    t.className = 'toast';
-    t.setAttribute('role', 'status');
-    t.textContent = msg;
-    document.body.appendChild(t);
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => t.remove(), 2400);
-  }
-
-  /* ---------- الأحداث ---------- */
-  $('#addBtn').addEventListener('click', () => openEditor(null));
-  $('#aSearch').addEventListener('input', e => { query = e.target.value; render(); });
-  $('#list').addEventListener('click', e => {
-    const ed = e.target.closest('[data-edit]');
-    if (ed) openEditor(ed.dataset.edit);
-  });
-  $('#list').addEventListener('change', e => {
-    const t = e.target.closest('[data-toggle]');
-    if (!t) return;
-    const p = products.find(x => x.id === t.dataset.toggle);
-    p.available = t.checked;
-    persist(t.checked ? 'رجع «' + p.name + '» يبيّن للزباين' : 'انخفى «' + p.name + '» عن الزباين');
-    render();
-  });
-
-  let resetArmed = false;
-  $('#resetBtn').addEventListener('click', e => {
-    if (!resetArmed) { resetArmed = true; e.target.textContent = 'اضغط مرة تانية لترجيع الأصناف الأصلية'; return; }
-    Store.reset();
-    products = Store.load();
-    resetArmed = false;
-    e.target.textContent = 'رجّع الأصناف الأصلية';
-    toast('رجعت الأصناف الأصلية');
-    render();
-  });
-
-  boot();
+  return {
+    $, $$, state, views, icon, countAr, num, db, fail, toast,
+    openSheet, closeSheet, confirmTwice, clearOnInput, requireFields, busy,
+    resizeImage, uploadImage, removeImages, thumb,
+    render, refreshHead, openAccount,
+    get user() { return user; },
+  };
 })();

@@ -6,38 +6,210 @@
   'use strict';
 
   const $ = (s, el = document) => el.querySelector(s);
-  const AUTH_KEY = 'diyafati_admin_ok';
   const UNITS = ['كيلو', 'قطعة', 'علبة', 'باقة'];
   const NOTE_DEFAULT = 'اكتب التفاصيل اللي بدك ياها (اسم، تاريخ...)';
 
   let products = Store.load();
   let query = '';
 
-  /* ---------- الدخول ---------- */
-  function isAuthed() {
-    try { return sessionStorage.getItem(AUTH_KEY) === '1'; } catch (e) { return false; }
+  /* ---------- الدخول (Supabase Auth) ----------
+     الدخول بالإيميل وكلمة السر، وبعدها منسأل is_admin().
+     إذا الحساب مو بجدول admins منطلّعه فوراً. */
+  let user = null;
+
+  function showGate() {
+    user = null;
+    $('#booting').hidden = true;
+    $('#panel').hidden = true;
+    $('#accountBtn').hidden = true;
+    $('#gate').hidden = false;
+    closeSheet();
   }
-  function showPanel() {
+  function showPanel(u) {
+    user = u;
+    $('#booting').hidden = true;
     $('#gate').hidden = true;
     $('#panel').hidden = false;
+    $('#accountBtn').hidden = false;
     render();
   }
 
-  if (CONFIG.demo) $('#pinHint').textContent = 'كلمة السر بالنسخة التجريبية: ' + CONFIG.adminPin;
-  else $('#demoNote').hidden = true;
+  async function isAdmin() {
+    const { data, error } = await sb.rpc('is_admin');
+    if (error) throw error;
+    return data === true;
+  }
 
-  $('#gateForm').addEventListener('submit', e => {
+  // بيشيل الأحمر عن الحقل لما يبلّش يكتب
+  function clearOnInput(form, msgEl) {
+    form.addEventListener('input', e => {
+      const f = e.target.closest('.field');
+      if (f) f.classList.remove('invalid');
+      msgEl.textContent = '';
+      msgEl.classList.remove('ok');
+    });
+  }
+  // بيعلّم الحقول الفاضية، وبيرجّع true إذا كلشي معبّى
+  function requireFields(form, names) {
+    let ok = true;
+    names.forEach(n => {
+      const empty = !form[n].value.trim();
+      form.querySelector(`[data-f="${n}"]`).classList.toggle('invalid', empty);
+      if (empty) ok = false;
+    });
+    return ok;
+  }
+  function busy(form, on) {
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = on;
+    if (on) { btn.dataset.label = btn.textContent; btn.textContent = 'لحظة...'; }
+    else if (btn.dataset.label) btn.textContent = btn.dataset.label;
+  }
+
+  const loginForm = $('#loginForm');
+  const forgotForm = $('#forgotForm');
+  clearOnInput(loginForm, $('#loginMsg'));
+  clearOnInput(forgotForm, $('#forgotMsg'));
+
+  loginForm.addEventListener('submit', async e => {
     e.preventDefault();
-    // بالنسخة الحقيقية: تسجيل الدخول بيصير عن طريق Supabase Auth مو هيك
-    if ($('#pin').value.trim() === CONFIG.adminPin) {
-      try { sessionStorage.setItem(AUTH_KEY, '1'); } catch (err) {}
-      showPanel();
-    } else {
-      $('#pinField').classList.add('invalid');
-      $('#pin').select();
+    if (!requireFields(loginForm, ['email', 'password'])) return;
+    busy(loginForm, true);
+    try {
+      const { data, error } = await sb.auth.signInWithPassword({
+        email: loginForm.email.value.trim(),
+        password: loginForm.password.value,
+      });
+      if (error) { $('#loginMsg').textContent = authErrorAr(error); return; }
+      if (!(await isAdmin())) {
+        await sb.auth.signOut();
+        $('#loginMsg').textContent = 'هالحساب ما إله صلاحية على لوحة التحكم.';
+        return;
+      }
+      loginForm.password.value = '';
+      showPanel(data.user);
+    } catch (err) {
+      $('#loginMsg').textContent = authErrorAr(err);
+    } finally {
+      busy(loginForm, false);
     }
   });
-  $('#pin').addEventListener('input', () => $('#pinField').classList.remove('invalid'));
+
+  // نسيت كلمة السر
+  function showForgot(on) {
+    loginForm.hidden = on;
+    forgotForm.hidden = !on;
+    if (on) forgotForm.email.value = loginForm.email.value;
+  }
+  $('#forgotLink').addEventListener('click', () => showForgot(true));
+  $('#backLink').addEventListener('click', () => showForgot(false));
+
+  forgotForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    if (!requireFields(forgotForm, ['email'])) return;
+    busy(forgotForm, true);
+    // الرابط بالإيميل بيرجع على reset.html بنفس مكان هالصفحة (Live Server أو الدومين)
+    const redirectTo = new URL('reset.html', location.href).href;
+    const { error } = await sb.auth.resetPasswordForEmail(forgotForm.email.value.trim(), { redirectTo });
+    busy(forgotForm, false);
+    const msg = $('#forgotMsg');
+    if (error) { msg.textContent = authErrorAr(error); return; }
+    // نفس الرسالة سواء الإيميل موجود أو لأ، لحتى ما نكشف مين عنده حساب
+    msg.classList.add('ok');
+    msg.textContent = 'إذا الإيميل مسجّل عنا، رح يوصلك رابط خلال دقايق. شيّك كمان على الـ Spam.';
+  });
+
+  // حسابي: تغيير كلمة السر وتسجيل الخروج
+  function openAccount() {
+    const sheet = openSheet(`
+      <div class="sheet-head"><h2>حسابي</h2><button class="close" aria-label="إغلاق">×</button></div>
+      <p class="muted-line">داخل بـ <bdi dir="ltr">${escapeHTML(user.email)}</bdi></p>
+      <form id="pwForm" novalidate>
+        <h3 class="sheet-sub">تغيير كلمة السر</h3>
+        <label class="field" data-f="current">
+          <span>كلمة السر الحالية</span>
+          <input name="current" type="password" autocomplete="current-password" dir="ltr">
+          <span class="err">اكتب كلمة السر الحالية.</span>
+        </label>
+        <label class="field" data-f="next">
+          <span>كلمة السر الجديدة</span>
+          <input name="next" type="password" autocomplete="new-password" dir="ltr">
+          <span class="err">لازم تكون 8 أحرف وأكتر.</span>
+        </label>
+        <label class="field" data-f="confirm">
+          <span>اكتب الجديدة مرة تانية</span>
+          <input name="confirm" type="password" autocomplete="new-password" dir="ltr">
+          <span class="err">الكلمتين مو متل بعض.</span>
+        </label>
+        <p class="form-msg" id="pwMsg" role="alert"></p>
+        <button class="btn" type="submit">حفظ كلمة السر</button>
+      </form>
+      <button class="btn danger" type="button" id="logoutBtn" style="margin-top:24px">تسجيل خروج</button>
+    `);
+
+    const form = $('#pwForm', sheet);
+    const msg = $('#pwMsg', sheet);
+    clearOnInput(form, msg);
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const next = form.next.value;
+      const okCurrent = requireFields(form, ['current']);
+      const short = next.length < 8;
+      const mismatch = next !== form.confirm.value;
+      form.querySelector('[data-f="next"]').classList.toggle('invalid', short);
+      form.querySelector('[data-f="confirm"]').classList.toggle('invalid', !short && mismatch);
+      if (!okCurrent || short || mismatch) return;
+
+      busy(form, true);
+      try {
+        // منتأكد من كلمة السر الحالية أول، لحتى ما حدا يغيّرها إذا لقى الموبايل مفتوح
+        const check = await sb.auth.signInWithPassword({ email: user.email, password: form.current.value });
+        if (check.error) {
+          msg.textContent = check.error.code === 'invalid_credentials'
+            ? 'كلمة السر الحالية غلط.' : authErrorAr(check.error);
+          return;
+        }
+        const { error } = await sb.auth.updateUser({ password: next });
+        if (error) { msg.textContent = authErrorAr(error); return; }
+        closeSheet();
+        toast('تغيّرت كلمة السر');
+      } catch (err) {
+        msg.textContent = authErrorAr(err);
+      } finally {
+        busy(form, false);
+      }
+    });
+
+    $('#logoutBtn', sheet).addEventListener('click', async () => {
+      await sb.auth.signOut();
+      showGate();
+    });
+  }
+  $('#accountBtn').addEventListener('click', openAccount);
+
+  // أول ما تفتح الصفحة: إذا في جلسة محفوظة وصاحبها أدمن، منفتح اللوحة دغري
+  async function boot() {
+    if (!sb) {
+      $('#booting').textContent = 'اللوحة مو مربوطة بـ Supabase. شيّك على config.js.';
+      return;
+    }
+    // إذا انتهت الجلسة أو انعمل خروج من مكان تاني
+    sb.auth.onAuthStateChange(event => {
+      if (event === 'SIGNED_OUT' && user) showGate();
+    });
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      if (session && await isAdmin()) showPanel(session.user);
+      else {
+        if (session) await sb.auth.signOut();
+        showGate();
+      }
+    } catch (err) {
+      showGate();
+      $('#loginMsg').textContent = authErrorAr(err);
+    }
+  }
 
   /* ---------- القائمة ---------- */
   const catName = id => (CATEGORIES.find(c => c.id === id) || {}).name || '';
@@ -276,6 +448,5 @@
     render();
   });
 
-  if (demoExpired()) showDemoExpired();
-  else if (isAuthed()) showPanel();
+  boot();
 })();

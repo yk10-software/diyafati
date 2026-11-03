@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>كلمة سر جديدة · ضيافتي</title>
+  <meta name="robots" content="noindex">
+  <meta name="theme-color" content="#F9F7A4">
+  <link rel="icon" type="image/png" href="icons/favicon-64.png">
+  <link rel="stylesheet" href="styles.css?v=6">
+  <!-- لازم نحفظ الرابط قبل ما تقرأه المكتبة وتمسحه (فيه الأخطاء متل «الرابط منتهي») -->
+  <script>window.RESET_HASH = location.hash;</script>
+</head>
+<body>
+  <div class="app admin">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="فتح التطبيق">
+        <img class="mark" src="img/logo-mark.png" alt="" width="38" height="40">
+        <img class="word" src="img/logo-word.png" alt="ضيافتي" width="97" height="26">
+      </a>
+    </header>
+
+    <section class="gate">
+      <img src="img/logo-full.png" alt="" width="100" height="120">
+      <h1>كلمة سر جديدة</h1>
+
+      <!-- عم نتحقق من الرابط -->
+      <p class="gate-note" id="checking">لحظة، عم نتحقق من الرابط...</p>
+
+      <!-- الرابط منتهي أو غلط -->
+      <div id="expired" hidden>
+        <p class="gate-note">هالرابط منتهي أو انستعمل قبل. اطلب رابط جديد من صفحة الدخول.</p>
+        <a class="btn as-link" href="admin.html">رجوع لصفحة الدخول</a>
+      </div>
+
+      <!-- الفورم -->
+      <form id="resetForm" novalidate hidden>
+        <label class="field" data-f="password">
+          <span>كلمة السر الجديدة</span>
+          <input name="password" type="password" autocomplete="new-password" dir="ltr" minlength="8">
+          <span class="err">لازم تكون 8 أحرف وأكتر.</span>
+        </label>
+        <label class="field" data-f="confirm">
+          <span>اكتبها مرة تانية</span>
+          <input name="confirm" type="password" autocomplete="new-password" dir="ltr">
+          <span class="err">الكلمتين مو متل بعض.</span>
+        </label>
+        <p class="form-msg" id="resetMsg" role="alert"></p>
+        <button class="btn" type="submit">حفظ كلمة السر</button>
+      </form>
+
+      <!-- خلص -->
+      <div id="done" hidden>
+        <p class="gate-note">تغيّرت كلمة السر ✓</p>
+        <a class="btn as-link" href="admin.html">فتح لوحة التحكم</a>
+      </div>
+    </section>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.min.js"
+          integrity="sha384-UagCvVPT5XXA0Hx+nJYUAGBFseHT9zBgpJMSebsAxl9lciTwbT+39j5VfRjdP5Tp"
+          crossorigin="anonymous"></script>
+  <script src="config.js?v=6"></script>
+  <script src="supa.js?v=6"></script>
+  <script src="reset.js?v=6"></script>
+</body>
+</html>

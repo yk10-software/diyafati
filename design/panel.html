@@ -1,0 +1,378 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>لوحة تحكم ضيافتي المتقدمة</title>
+<style>
+@font-face { font-family: 'Reem Kufi'; font-weight: 500; src: url(../fonts/reem-kufi-arabic-500-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Reem Kufi'; font-weight: 600; src: url(../fonts/reem-kufi-arabic-600-normal.woff2) format('woff2'); }
+@font-face { font-family: 'Plex'; font-weight: 400; src: url(../fonts/ibm-plex-sans-arabic-arabic-400-normal.woff2) format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF, U+200C-200F; }
+@font-face { font-family: 'Plex'; font-weight: 500; src: url(../fonts/ibm-plex-sans-arabic-arabic-500-normal.woff2) format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF, U+200C-200F; }
+@font-face { font-family: 'Plex'; font-weight: 600; src: url(../fonts/ibm-plex-sans-arabic-arabic-600-normal.woff2) format('woff2'); unicode-range: U+0600-06FF, U+0750-077F, U+FB50-FDFF, U+FE70-FEFF, U+200C-200F; }
+@font-face { font-family: 'Plex'; font-weight: 400; src: url(../fonts/ibm-plex-sans-arabic-latin-400-normal.woff2) format('woff2'); unicode-range: U+0000-00FF, U+2000-206F; }
+@font-face { font-family: 'Plex'; font-weight: 500; src: url(../fonts/ibm-plex-sans-arabic-latin-500-normal.woff2) format('woff2'); unicode-range: U+0000-00FF, U+2000-206F; }
+@font-face { font-family: 'Plex'; font-weight: 600; src: url(../fonts/ibm-plex-sans-arabic-latin-600-normal.woff2) format('woff2'); unicode-range: U+0000-00FF, U+2000-206F; }
+
+:root {
+  --butter: #F9F7A4; --butter-soft: #FCFBD6; --cocoa: #5D3E22; --ink: #3A2614; --muted: #86705A;
+  --foil: #9C7629; --sugar: #FFFEF6; --line: #ECE4C6; --photo: #F2EEE2; --whats: #1B9A53;
+  --new: #B4561F; --prep: #9C7629; --way: #2F6B8A; --done: #1B7A47;
+  --arch: 50% 50% 12px 12px / 40% 40% 12px 12px;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: #E9E3CC; font-family: 'Plex', system-ui, sans-serif; color: var(--ink); }
+.wrap { display: flex; flex-wrap: wrap; gap: 32px; padding: 32px; }
+.screen { width: 390px; height: 844px; background: var(--sugar); position: relative; overflow: hidden; display: flex; flex-direction: column; }
+.head { background: var(--butter); padding: 14px 16px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.head .t { display: flex; align-items: center; gap: 10px; }
+.head img { height: 34px; }
+.head h1 { margin: 0; font-family: 'Reem Kufi'; font-weight: 500; font-size: 22px; color: var(--cocoa); line-height: 1.2; }
+.head small { display: block; font-size: 12px; color: var(--muted); font-weight: 500; }
+.head .back { width: 36px; height: 36px; border-radius: 50%; border: 1.5px solid var(--cocoa); display: grid; place-items: center; color: var(--cocoa); }
+.body { flex: 1; overflow: hidden; padding: 14px 16px 0; }
+.nav { height: 74px; border-top: 1px solid var(--line); background: #fff; display: grid; grid-template-columns: repeat(5, 1fr); padding: 8px 4px 14px; }
+.nav div { display: flex; flex-direction: column; align-items: center; gap: 3px; font-size: 11.5px; color: var(--muted); font-weight: 500; position: relative; }
+.nav div.on { color: var(--cocoa); font-weight: 600; }
+.nav div.on::before { content: ''; position: absolute; top: -9px; width: 28px; height: 3px; border-radius: 2px; background: var(--cocoa); }
+.nav svg { width: 23px; height: 23px; }
+.nav .dot { position: absolute; top: -2px; left: 22px; min-width: 16px; height: 16px; border-radius: 8px; background: var(--new); color: #fff; font-size: 10px; line-height: 16px; text-align: center; padding: 0 4px; }
+.card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+.sec { margin: 16px 0 8px; display: flex; justify-content: space-between; align-items: baseline; }
+.sec h2 { margin: 0; font-family: 'Reem Kufi'; font-weight: 500; font-size: 18px; color: var(--cocoa); }
+.sec a { font-size: 13px; color: var(--muted); }
+.switch { width: 46px; height: 28px; border-radius: 14px; background: var(--cocoa); position: relative; flex: 0 0 auto; }
+.switch::after { content: ''; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%; background: #fff; }
+.switch.off { background: #D9D1B6; }
+.switch.off::after { left: auto; right: 3px; }
+.btn { display: flex; align-items: center; justify-content: center; gap: 8px; height: 48px; border-radius: 13px; background: var(--cocoa); color: var(--butter); font-weight: 600; font-size: 16px; }
+.btn.ghost { background: transparent; color: var(--cocoa); border: 1.5px solid var(--cocoa); }
+.btn.sm { height: 34px; padding: 0 14px; font-size: 13.5px; border-radius: 10px; }
+.chip { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+.st-new { background: #FBE9DC; color: var(--new); }
+.st-prep { background: #F6EFD9; color: var(--prep); }
+.st-way { background: #E1EEF4; color: var(--way); }
+.st-done { background: #DFF1E6; color: var(--done); }
+.price { color: var(--foil); font-weight: 600; white-space: nowrap; }
+.muted { color: var(--muted); }
+.num { direction: ltr; unicode-bidi: isolate; }
+
+/* dashboard */
+.open { display: flex; align-items: center; gap: 12px; }
+.open p { margin: 0; flex: 1; line-height: 1.35; }
+.open b { display: block; font-weight: 600; }
+.open span { font-size: 13px; color: var(--muted); }
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.stat { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+.stat.hero { background: var(--cocoa); color: var(--butter); border-color: var(--cocoa); }
+.stat .v { font-family: 'Plex'; font-weight: 600; font-size: 24px; line-height: 1.2; }
+.stat .l { font-size: 13px; color: var(--muted); }
+.stat.hero .l { color: #E8DDB0; }
+.mini { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.mini:last-child { border-bottom: 0; }
+.mini .who { flex: 1; line-height: 1.35; }
+.mini .who b { font-weight: 600; font-size: 14.5px; }
+.mini .who span { display: block; font-size: 12.5px; color: var(--muted); }
+.bars .row { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; margin: 8px 0; font-size: 14px; }
+.bars .track { grid-column: 1 / -1; height: 8px; border-radius: 4px; background: var(--photo); overflow: hidden; }
+.bars .track i { display: block; height: 100%; background: var(--foil); border-radius: 4px; }
+
+/* orders */
+.tabs { display: flex; gap: 6px; overflow: hidden; }
+.tab { flex: 0 0 auto; height: 36px; padding: 0 12px; border-radius: 18px; border: 1.5px solid var(--cocoa); color: var(--cocoa); font-weight: 500; font-size: 13.5px; display: flex; align-items: center; gap: 6px; }
+.tab.on { background: var(--cocoa); color: var(--butter); }
+.tab i { font-style: normal; font-size: 11px; background: var(--butter); color: var(--cocoa); border-radius: 9px; min-width: 18px; height: 18px; line-height: 18px; text-align: center; padding: 0 4px; font-weight: 600; }
+.order { margin-top: 10px; }
+.order .top { display: flex; justify-content: space-between; align-items: center; }
+.order .top b { font-weight: 600; }
+.order .nm { font-family: 'Reem Kufi'; font-weight: 500; font-size: 17px; color: var(--cocoa); margin: 6px 0 2px; }
+.order .ln { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); margin-top: 3px; }
+.order .ln svg { width: 15px; height: 15px; flex: 0 0 auto; }
+.order .bot { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--line); }
+
+/* details */
+.steps { display: grid; grid-template-columns: repeat(4, 1fr); position: relative; margin: 4px 0 6px; }
+.steps::before { content: ''; position: absolute; top: 15px; right: 12%; left: 12%; height: 3px; background: var(--line); }
+.steps::after { content: ''; position: absolute; top: 15px; right: 12%; width: 25%; height: 3px; background: var(--cocoa); }
+.step { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
+.step i { width: 32px; height: 32px; border-radius: 50%; background: #fff; border: 2px solid var(--line); display: grid; place-items: center; font-style: normal; font-weight: 600; font-size: 13px; color: var(--muted); }
+.step.done i { background: var(--cocoa); border-color: var(--cocoa); color: var(--butter); }
+.step.cur i { border-color: var(--cocoa); color: var(--cocoa); }
+.step.cur { color: var(--cocoa); font-weight: 600; }
+.cust { display: flex; align-items: center; gap: 10px; }
+.cust .who { flex: 1; }
+.cust .who b { font-family: 'Reem Kufi'; font-weight: 500; font-size: 17px; color: var(--cocoa); }
+.cust .who span { display: block; font-size: 13px; color: var(--muted); }
+.circle { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; }
+.circle svg { width: 20px; height: 20px; }
+.c-call { background: var(--butter-soft); color: var(--cocoa); border: 1px solid var(--line); }
+.c-wa { background: var(--whats); color: #fff; }
+.kv { display: flex; gap: 10px; align-items: flex-start; padding: 8px 0; font-size: 14px; line-height: 1.45; }
+.kv svg { width: 18px; height: 18px; color: var(--muted); flex: 0 0 auto; margin-top: 2px; }
+.item { display: grid; grid-template-columns: 42px 1fr auto; gap: 10px; align-items: center; padding: 7px 0; }
+.item img { width: 42px; height: 52px; object-fit: cover; border-radius: var(--arch); }
+.item b { font-weight: 500; font-size: 14px; display: block; line-height: 1.3; }
+.item span { font-size: 12.5px; color: var(--muted); }
+.note { background: var(--butter-soft); border-radius: 10px; padding: 8px 10px; font-size: 13px; margin-top: 6px; }
+.total { display: flex; justify-content: space-between; font-weight: 600; padding-top: 10px; margin-top: 4px; border-top: 1px dashed var(--line); }
+
+/* products */
+.search { height: 42px; border: 1px solid var(--line); border-radius: 12px; background: #fff; display: flex; align-items: center; gap: 8px; padding: 0 12px; color: var(--muted); font-size: 14px; }
+.search svg { width: 18px; height: 18px; }
+.fchips { display: flex; gap: 6px; margin: 10px 0 4px; overflow: hidden; }
+.fchips span { flex: 0 0 auto; height: 30px; padding: 0 12px; border-radius: 15px; border: 1px solid var(--cocoa); color: var(--cocoa); font-size: 13px; display: flex; align-items: center; }
+.fchips span.on { background: var(--cocoa); color: var(--butter); }
+.prow { display: grid; grid-template-columns: 52px 1fr auto; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.prow img { width: 52px; height: 64px; object-fit: cover; border-radius: var(--arch); }
+.prow.off img { filter: grayscale(1); opacity: .45; }
+.prow b { font-family: 'Reem Kufi'; font-weight: 500; font-size: 15.5px; color: var(--cocoa); display: block; line-height: 1.3; }
+.prow.off b { color: var(--muted); }
+.prow .meta { font-size: 12.5px; color: var(--muted); }
+.prow .r { display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); text-decoration: underline; }
+.out { font-size: 11px; font-weight: 600; color: var(--new); background: #FBE9DC; border-radius: 8px; padding: 1px 7px; margin-inline-start: 6px; vertical-align: 2px; font-family: 'Plex'; }
+.fab { position: absolute; left: 16px; bottom: 90px; height: 50px; padding: 0 20px; border-radius: 25px; background: var(--cocoa); color: var(--butter); display: flex; align-items: center; gap: 8px; font-weight: 600; box-shadow: 0 6px 18px rgba(58,38,20,.3); }
+.fab svg { width: 20px; height: 20px; }
+
+/* categories */
+.crow { display: flex; align-items: center; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.crow .grip { color: #C9BE9A; }
+.crow .grip svg { width: 18px; height: 18px; display: block; }
+.crow .nm { flex: 1; }
+.crow .nm b { font-family: 'Reem Kufi'; font-weight: 500; font-size: 16px; color: var(--cocoa); }
+.crow .nm span { display: block; font-size: 12.5px; color: var(--muted); }
+.crow .act { display: flex; gap: 6px; }
+.crow .act div { width: 34px; height: 34px; border-radius: 10px; background: var(--butter-soft); border: 1px solid var(--line); display: grid; place-items: center; color: var(--cocoa); }
+.crow .act svg { width: 16px; height: 16px; }
+.crow.fresh { background: var(--butter-soft); margin: 0 -16px; padding: 12px 16px; border-bottom-color: transparent; }
+.newcat { display: flex; gap: 8px; margin-top: 14px; }
+.newcat .in { flex: 1; height: 44px; border: 1.5px dashed var(--cocoa); border-radius: 12px; display: flex; align-items: center; padding: 0 12px; color: var(--muted); font-size: 14px; }
+.stories { display: flex; gap: 10px; margin-top: 8px; }
+.stories .s { width: 62px; text-align: center; font-size: 12px; color: var(--cocoa); }
+.stories .s .f { width: 62px; height: 78px; border: 2px solid var(--cocoa); border-radius: var(--arch); padding: 2px; }
+.stories .s img { width: 100%; height: 100%; object-fit: cover; border-radius: var(--arch); }
+.stories .add .f { border-style: dashed; display: grid; place-items: center; font-size: 26px; color: var(--cocoa); background: var(--butter-soft); }
+
+/* settings */
+.srow { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14.5px; }
+.srow:last-child { border-bottom: 0; }
+.srow .fee { min-width: 92px; height: 34px; border: 1px solid var(--line); border-radius: 9px; display: flex; align-items: center; justify-content: center; font-weight: 600; color: var(--ink); font-size: 13.5px; background: var(--sugar); }
+.srow .lbl span { display: block; font-size: 12.5px; color: var(--muted); }
+.caption { padding: 4px 0 0; color: var(--muted); font-size: 12.5px; }
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute">
+  <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1v-8.5Z"/></symbol>
+  <symbol id="i-orders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z"/><path d="M9 8h6M9 12h6M9 16h3"/></symbol>
+  <symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5v-9Z"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2 5.5 5.5"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11Z"/><circle cx="12" cy="10" r="2.3"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1Z"/></symbol>
+  <symbol id="i-wa" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm4.5 12.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.3.8 3.2.7.5-.1 1.5-.6 1.8-1.2.2-.6.2-1.1.1-1.2l-.5-.3Z"/></symbol>
+  <symbol id="i-cash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16v4Z"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13"/></symbol>
+  <symbol id="i-grip" viewBox="0 0 24 24" fill="currentColor"><circle cx="9" cy="6" r="1.6"/><circle cx="15" cy="6" r="1.6"/><circle cx="9" cy="12" r="1.6"/><circle cx="15" cy="12" r="1.6"/><circle cx="9" cy="18" r="1.6"/><circle cx="15" cy="18" r="1.6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></symbol>
+</svg>
+
+<div class="wrap">
+
+<!-- 1. الرئيسية -->
+<section class="screen" id="s1">
+  <div class="head">
+    <div class="t"><img src="../img/logo-mark.png" alt=""><div><h1>مسا الخير</h1><small>لوحة تحكم ضيافتي</small></div></div>
+  </div>
+  <div class="body">
+    <div class="card open">
+      <p><b>المحل مفتوح للطلبات</b><span>بتسكّره بكبسة إذا بدك توقف الطلبات</span></p>
+      <div class="switch"></div>
+    </div>
+    <div class="stats">
+      <div class="stat hero"><div class="v num">86,500</div><div class="l">مبيعات اليوم (ل.س)</div></div>
+      <div class="stat"><div class="v">12</div><div class="l">طلب اليوم</div></div>
+      <div class="stat"><div class="v" style="color:var(--new)">3</div><div class="l">طلبات جديدة</div></div>
+      <div class="stat"><div class="v">4</div><div class="l">مواعيد بكرا</div></div>
+    </div>
+    <div class="sec"><h2>طلبات جديدة</h2><a>عرض الكل</a></div>
+    <div class="card" style="padding-top:2px;padding-bottom:2px">
+      <div class="mini"><div class="who"><b>أم جود</b><span>3 أصناف، بموعد الخميس 6:30 م</span></div><span class="price num">9,250</span><div class="btn sm">قبول</div></div>
+      <div class="mini"><div class="who"><b>محمد الحلبي</b><span>صنفين، شحن لحلب</span></div><span class="price num">7,800</span><div class="btn sm">قبول</div></div>
+      <div class="mini"><div class="who"><b>رنا</b><span>صنف واحد، بأقرب وقت</span></div><span class="price num">2,600</span><div class="btn sm">قبول</div></div>
+    </div>
+    <div class="sec"><h2>الأكثر طلباً هالأسبوع</h2></div>
+    <div class="card bars">
+      <div class="row"><span>هريسة لوز بيبي صبي</span><span class="muted">14 كيلو</span><div class="track"><i style="width:100%"></i></div></div>
+      <div class="row"><span>شوكولا ضيافتي ميكس</span><span class="muted">9 كيلو</span><div class="track"><i style="width:64%"></i></div></div>
+      <div class="row"><span>ملبس مطبوع خاص</span><span class="muted">6 كيلو</span><div class="track"><i style="width:43%"></i></div></div>
+    </div>
+  </div>
+  <nav class="nav">
+    <div class="on"><svg><use href="#i-home"/></svg>الرئيسية</div>
+    <div><svg><use href="#i-orders"/></svg>الطلبات<span class="dot">3</span></div>
+    <div><svg><use href="#i-box"/></svg>الأصناف</div>
+    <div><svg><use href="#i-grid"/></svg>الأقسام</div>
+    <div><svg><use href="#i-gear"/></svg>الإعدادات</div>
+  </nav>
+</section>
+
+<!-- 2. الطلبات -->
+<section class="screen" id="s2">
+  <div class="head"><div class="t"><img src="../img/logo-mark.png" alt=""><div><h1>الطلبات</h1><small>كل طلب بينحفظ هون وبيوصلك عالواتس</small></div></div></div>
+  <div class="body">
+    <div class="tabs">
+      <div class="tab on">جديدة <i>3</i></div>
+      <div class="tab">قيد التحضير <i>2</i></div>
+      <div class="tab">بالطريق <i>1</i></div>
+      <div class="tab">تم</div>
+    </div>
+    <div class="card order">
+      <div class="top"><b class="num">#D35672</b><span class="chip st-new">جديد</span></div>
+      <div class="nm">أم جود</div>
+      <div class="ln"><svg><use href="#i-cal"/></svg>الخميس 5 تشرين الثاني، 6:30 مساءً</div>
+      <div class="ln"><svg><use href="#i-pin"/></svg>دمشق، المزة</div>
+      <div class="bot"><span class="muted" style="font-size:13px">3 أصناف، كاش</span><span class="price num">9,250 ل.س</span></div>
+    </div>
+    <div class="card order">
+      <div class="top"><b class="num">#D35690</b><span class="chip st-new">جديد</span></div>
+      <div class="nm">محمد الحلبي</div>
+      <div class="ln"><svg><use href="#i-clock"/></svg>بأقرب وقت</div>
+      <div class="ln"><svg><use href="#i-pin"/></svg>حلب، شحن</div>
+      <div class="bot"><span class="muted" style="font-size:13px">صنفين، كاش</span><span class="price num">7,800 ل.س</span></div>
+    </div>
+    <div class="card order">
+      <div class="top"><b class="num">#D35701</b><span class="chip st-new">جديد</span></div>
+      <div class="nm">رنا</div>
+      <div class="ln"><svg><use href="#i-clock"/></svg>بأقرب وقت</div>
+      <div class="ln"><svg><use href="#i-pin"/></svg>ريف دمشق، قدسيا</div>
+      <div class="bot"><span class="muted" style="font-size:13px">صنف واحد، كاش</span><span class="price num">2,600 ل.س</span></div>
+    </div>
+  </div>
+  <nav class="nav">
+    <div><svg><use href="#i-home"/></svg>الرئيسية</div>
+    <div class="on"><svg><use href="#i-orders"/></svg>الطلبات<span class="dot">3</span></div>
+    <div><svg><use href="#i-box"/></svg>الأصناف</div>
+    <div><svg><use href="#i-grid"/></svg>الأقسام</div>
+    <div><svg><use href="#i-gear"/></svg>الإعدادات</div>
+  </nav>
+</section>
+
+<!-- 3. تفاصيل الطلب -->
+<section class="screen" id="s3">
+  <div class="head">
+    <div class="t"><div class="back"><svg width="18" height="18"><use href="#i-back"/></svg></div><div><h1>طلب <span class="num">#D35672</span></h1><small>وصل الساعة 9:14 مساءً</small></div></div>
+    <span class="chip st-prep">قيد التحضير</span>
+  </div>
+  <div class="body">
+    <div class="steps">
+      <div class="step done"><i>✓</i>جديد</div>
+      <div class="step cur"><i>2</i>قيد التحضير</div>
+      <div class="step"><i>3</i>بالطريق</div>
+      <div class="step"><i>4</i>تم التسليم</div>
+    </div>
+    <div class="card cust" style="margin-top:10px">
+      <div class="who"><b>أم جود</b><span class="num">0944 123 456</span></div>
+      <div class="circle c-call"><svg><use href="#i-phone"/></svg></div>
+      <div class="circle c-wa"><svg><use href="#i-wa"/></svg></div>
+    </div>
+    <div class="card" style="margin-top:10px;padding-top:4px;padding-bottom:4px">
+      <div class="kv"><svg><use href="#i-pin"/></svg><span>دمشق، المزة، شارع الفيلات، جانب الصيدلية</span></div>
+      <div class="kv"><svg><use href="#i-cal"/></svg><span>الخميس 5 تشرين الثاني، الساعة 6:30 مساءً</span></div>
+      <div class="kv"><svg><use href="#i-cash"/></svg><span>كاش عند الاستلام</span></div>
+    </div>
+    <div class="card" style="margin-top:10px">
+      <div class="item"><img src="../img/harisa-boy.jpg" alt=""><div><b>هريسة لوز بيبي صبي</b><span>1 كيلو</span></div><span class="price num">2,000</span></div>
+      <div class="item"><img src="../img/mlabbas-1.jpg" alt=""><div><b>ملبس مطبوع خاص</b><span>2 كيلو</span></div><span class="price num">6,000</span></div>
+      <div class="note">نص الطباعة: أهلاً بجود</div>
+      <div class="item"><img src="../img/choco-lotus.jpg" alt=""><div><b>شوكولا ويفر باللوتس</b><span>نص كيلو</span></div><span class="price num">1,250</span></div>
+      <div class="total"><span>المجموع</span><span class="price num">9,250 ل.س</span></div>
+    </div>
+  </div>
+  <div style="padding:12px 16px 20px;background:var(--sugar);border-top:1px solid var(--line)"><div class="btn">الطلب طلع بالطريق</div></div>
+</section>
+
+<!-- 4. الأصناف -->
+<section class="screen" id="s4">
+  <div class="head"><div class="t"><img src="../img/logo-mark.png" alt=""><div><h1>الأصناف</h1><small>152 صنف، منهن 147 متوفر</small></div></div></div>
+  <div class="body">
+    <div class="search"><svg><use href="#i-search"/></svg>ابحث عن صنف</div>
+    <div class="fchips"><span class="on">الكل</span><span>ضيافة مواليد</span><span>شوكولا</span><span>ملبس</span><span>راحة</span></div>
+    <div class="prow"><img src="../img/harisa-boy.jpg" alt=""><div><b>هريسة لوز بيبي صبي</b><div class="meta">ضيافة مواليد</div><span class="price num">2,000 ل.س</span> <span class="meta">/ كيلو</span></div><div class="r"><div class="switch"></div>تعديل</div></div>
+    <div class="prow"><img src="../img/harisa-girl.jpg" alt=""><div><b>هريسة لوز بيبي بنت</b><div class="meta">ضيافة مواليد</div><span class="price num">2,000 ل.س</span> <span class="meta">/ كيلو</span></div><div class="r"><div class="switch"></div>تعديل</div></div>
+    <div class="prow off"><img src="../img/choco-mix.jpg" alt=""><div><b>شوكولا ضيافتي ميكس<span class="out">خلص</span></b><div class="meta">شوكولا</div><span class="price num">2,600 ل.س</span> <span class="meta">/ كيلو</span></div><div class="r"><div class="switch off"></div>تعديل</div></div>
+    <div class="prow"><img src="../img/choco-lotus.jpg" alt=""><div><b>شوكولا ويفر باللوتس</b><div class="meta">شوكولا</div><span class="price num">2,500 ل.س</span> <span class="meta">/ كيلو</span></div><div class="r"><div class="switch"></div>تعديل</div></div>
+    <div class="prow"><img src="../img/mlabbas-2.jpg" alt=""><div><b>ملبس مطبوع خاص</b><div class="meta">ملبس</div><span class="price num">3,000 ل.س</span> <span class="meta">/ كيلو</span></div><div class="r"><div class="switch"></div>تعديل</div></div>
+  </div>
+  <div class="fab"><svg><use href="#i-plus"/></svg>صنف جديد</div>
+  <nav class="nav">
+    <div><svg><use href="#i-home"/></svg>الرئيسية</div>
+    <div><svg><use href="#i-orders"/></svg>الطلبات<span class="dot">3</span></div>
+    <div class="on"><svg><use href="#i-box"/></svg>الأصناف</div>
+    <div><svg><use href="#i-grid"/></svg>الأقسام</div>
+    <div><svg><use href="#i-gear"/></svg>الإعدادات</div>
+  </nav>
+</section>
+
+<!-- 5. الأقسام والقصص -->
+<section class="screen" id="s5">
+  <div class="head"><div class="t"><img src="../img/logo-mark.png" alt=""><div><h1>الأقسام والقصص</h1><small>اسحب القسم لتغيّر ترتيبه بالتطبيق</small></div></div></div>
+  <div class="body">
+    <div class="crow"><span class="grip"><svg><use href="#i-grip"/></svg></span><div class="nm"><b>ضيافة مواليد</b><span>38 صنف</span></div><div class="act"><div><svg><use href="#i-edit"/></svg></div><div><svg><use href="#i-trash"/></svg></div></div></div>
+    <div class="crow"><span class="grip"><svg><use href="#i-grip"/></svg></span><div class="nm"><b>شوكولا</b><span>46 صنف</span></div><div class="act"><div><svg><use href="#i-edit"/></svg></div><div><svg><use href="#i-trash"/></svg></div></div></div>
+    <div class="crow"><span class="grip"><svg><use href="#i-grip"/></svg></span><div class="nm"><b>ملبس</b><span>27 صنف</span></div><div class="act"><div><svg><use href="#i-edit"/></svg></div><div><svg><use href="#i-trash"/></svg></div></div></div>
+    <div class="crow"><span class="grip"><svg><use href="#i-grip"/></svg></span><div class="nm"><b>أزهار</b><span>41 صنف</span></div><div class="act"><div><svg><use href="#i-edit"/></svg></div><div><svg><use href="#i-trash"/></svg></div></div></div>
+    <div class="crow fresh"><span class="grip"><svg><use href="#i-grip"/></svg></span><div class="nm"><b>راحة</b><span>قسم جديد، لسا ما فيه أصناف</span></div><div class="act"><div><svg><use href="#i-edit"/></svg></div><div><svg><use href="#i-trash"/></svg></div></div></div>
+    <div class="newcat"><div class="in">اسم القسم الجديد</div><div class="btn sm" style="height:44px">إضافة</div></div>
+    <div class="sec" style="margin-top:22px"><h2>القصص</h2><a>بتختفي لحالها بعد أسبوع</a></div>
+    <div class="stories">
+      <div class="s add"><div class="f">+</div>قصة جديدة</div>
+      <div class="s"><div class="f"><img src="../img/harisa-boy.jpg" alt=""></div>مواليد</div>
+      <div class="s"><div class="f"><img src="../img/choco-mix.jpg" alt=""></div>شوكولا</div>
+      <div class="s"><div class="f"><img src="../img/mlabbas-1.jpg" alt=""></div>ملبس</div>
+    </div>
+  </div>
+  <nav class="nav">
+    <div><svg><use href="#i-home"/></svg>الرئيسية</div>
+    <div><svg><use href="#i-orders"/></svg>الطلبات<span class="dot">3</span></div>
+    <div><svg><use href="#i-box"/></svg>الأصناف</div>
+    <div class="on"><svg><use href="#i-grid"/></svg>الأقسام</div>
+    <div><svg><use href="#i-gear"/></svg>الإعدادات</div>
+  </nav>
+</section>
+
+<!-- 6. التوصيل والإعدادات -->
+<section class="screen" id="s6">
+  <div class="head"><div class="t"><img src="../img/logo-mark.png" alt=""><div><h1>الإعدادات</h1><small>التوصيل وساعات العمل والطلبات</small></div></div></div>
+  <div class="body">
+    <div class="sec" style="margin-top:2px"><h2>أجور التوصيل</h2><a>ل.س</a></div>
+    <div class="card" style="padding-top:2px;padding-bottom:2px">
+      <div class="srow"><span>دمشق</span><span class="fee num">200</span></div>
+      <div class="srow"><span>ريف دمشق</span><span class="fee num">350</span></div>
+      <div class="srow"><div class="lbl">باقي المحافظات<span>شحن</span></div><span class="fee num">500</span></div>
+      <div class="srow"><span>خارج سوريا</span><span class="fee">حسب الاتفاق</span></div>
+    </div>
+    <div class="sec"><h2>الطلبات</h2></div>
+    <div class="card" style="padding-top:2px;padding-bottom:2px">
+      <div class="srow"><div class="lbl">رقم واتساب الطلبات<span class="num">+963 953 334 642</span></div><span class="muted" style="font-size:13px;text-decoration:underline">تغيير</span></div>
+      <div class="srow"><div class="lbl">ساعات العمل<span>كل يوم من 9 الصبح لـ 10 بالليل</span></div><span class="muted" style="font-size:13px;text-decoration:underline">تغيير</span></div>
+      <div class="srow"><div class="lbl">أقل كمية للطلب<span>نص كيلو</span></div><span class="muted" style="font-size:13px;text-decoration:underline">تغيير</span></div>
+      <div class="srow"><div class="lbl">استقبال طلبات بموعد<span>لحد 30 يوم لقدام</span></div><div class="switch"></div></div>
+    </div>
+    <p class="caption">أجور التوصيل هون أرقام للمثال، وبتحطها إنت متل ما بدك.</p>
+  </div>
+  <nav class="nav">
+    <div><svg><use href="#i-home"/></svg>الرئيسية</div>
+    <div><svg><use href="#i-orders"/></svg>الطلبات<span class="dot">3</span></div>
+    <div><svg><use href="#i-box"/></svg>الأصناف</div>
+    <div><svg><use href="#i-grid"/></svg>الأقسام</div>
+    <div class="on"><svg><use href="#i-gear"/></svg>الإعدادات</div>
+  </nav>
+</section>
+
+</div>
+</body>
+</html>

@@ -67,7 +67,8 @@
 - ابعت ليزن صور من الشغل أول بأول ليبعتها للعميل.
 
 ## ملاحظات عن بيئة العمل
-- من بيئة كلود السحابية، `supabase.com` و `*.supabase.co` **محجوبين**. يعني يزن هو اللي بيشغّل الـSQL من لوحة Supabase، وبيجرّب الربط الحقيقي من جهازه.
-- في Postgres 16 محلي بـ `/usr/lib/postgresql/16/bin` بتقدر تستعمله لتجربة الـSQL قبل ما تعطيه ليزن. اعمل stub لـ `auth.uid()` وللأدوار `anon` و `authenticated`.
-- Playwright و Chromium موجودين لتجربة الواجهة وأخذ صور للشاشات.
+- يزن بيشتغل على **لابتوب ويندوز، بإضافة Claude Code بـ VS Code**. يعني الأوامر لازم تمشي على ويندوز (PowerShell)، وهو بيجرّب الواجهة على المتصفح وعلى موبايله.
+- لتشغيل الموقع محلياً: إضافة Live Server بالـVS Code، أو `npx serve .`. الـservice worker بيحتاج `localhost` أو https.
+- الـSQL بيشغّله يزن من **SQL Editor** بلوحة Supabase. اكتبه بملفات مرتبة بمجلد `supabase/` (مثلاً `01_schema.sql` و `02_policies.sql` و `03_functions.sql` و `04_seed.sql`)، واشرحله كل خطوة.
+- مفاتيح Supabase: الـ `anon key` والـ URL بيتحطوا بملف `config.js`. ممنوع تحط `service_role` بأي ملف بالريبو.
 - يزن بيستعمل GitHub org اسمها `yk10-software`. هالريبو **public**، فلا تحط فيه أسرار ولا معلومات شخصية ولا مبالغ الاتفاق.

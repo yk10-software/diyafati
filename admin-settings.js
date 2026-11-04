@@ -93,6 +93,14 @@
         </div>
       </div>
 
+      <div class="sec"><h2>التقييمات</h2></div>
+      <div class="a-card">
+        <div class="srow">
+          <div class="lbl"><b>تقييمات الزباين</b><span>اختار شو بينعرض بالموقع</span></div>
+          <a class="link-btn" href="#reviews">إدارة</a>
+        </div>
+      </div>
+
       <div class="sec"><h2>الإشعارات</h2></div>
       <div class="a-card" id="pushBox"></div>
 

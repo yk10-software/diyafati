@@ -36,6 +36,12 @@
   force = true
 
 [[redirects]]
+  from = "/.github/*"
+  to = "/not-found"
+  status = 404
+  force = true
+
+[[redirects]]
   from = "/design/*"
   to = "/not-found"
   status = 404

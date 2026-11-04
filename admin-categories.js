@@ -1,5 +1,5 @@
 /* =========================================================
-   ضيافتي — لوحة التحكم: شاشة الأقسام
+   ضيافتي — لوحة التحكم: شاشة الأقسام (والقصص تحتها، من admin-stories.js)
    إضافة، تعديل، حذف، وترتيب بالسحب (بالإصبع أو الماوس أو أسهم الكيبورد).
    ========================================================= */
 (() => {
@@ -10,7 +10,7 @@
   const countIn = id => state.products.filter(p => p.category_id === id).length;
 
   A.views.categories = {
-    title: 'الأقسام',
+    title: 'الأقسام والقصص',
     sub: () => 'اسحب القسم من النقاط لتغيّر ترتيبه بالتطبيق',
     render(el) {
       el.innerHTML = `
@@ -20,8 +20,13 @@
           <input id="cName" name="cname" placeholder="اسم القسم الجديد" maxlength="40" autocomplete="off">
           <button class="btn-sm" type="submit">إضافة</button>
         </form>
+        <div class="p-pad">
+          <div class="sec"><h2>القصص</h2><small>بتختفي لحالها بعد أسبوع</small></div>
+          <div class="a-stories" id="sList"></div>
+        </div>
       `;
       renderList();
+      A.mountStories();
 
       $('#cNew', el).addEventListener('submit', async e => {
         e.preventDefault();

@@ -41,6 +41,7 @@
   let categories = [];
   let products = [];
   let stories = [];
+  let reviews = [];   // اللي اختارها صاحب المحل للعرض
   let zones = [];                            // مناطق التوصيل
   let accounts = [];                         // حسابات شام كاش والبنوك
   let cart = ls.get(CART_KEY, []);           // [{ id, qty, note }]
@@ -71,13 +72,16 @@
       catOrder(a.category_id) - catOrder(b.category_id) || a.sort_order - b.sort_order || a.id - b.id);
     // القصة اللي خلصت كل صورها (بعد أسبوع) ما بتبيّن
     stories = data.stories.filter(s => s.story_items.length);
+    reviews = data.reviews || [];
     zones = data.zones || [];
     accounts = data.accounts || [];
   }
 
   // بيجيب كل الكتالوج من Supabase بنفس الوقت
   async function fetchCatalog() {
-    const [settingsRows, cats, prods, strs, zs, accs] = await Promise.all([
+    const [revs, settingsRows, cats, prods, strs, zs, accs] = await Promise.all([
+      // التقييمات شغلة إضافية: إذا فشلت، الكتالوج لازم يضل يفتح
+      API.get('reviews?select=id,name,rating,comment&is_public=eq.true&order=created_at.desc&limit=12').catch(() => []),
       API.get('settings?select=*'),
       API.get('categories?select=id,name,sort_order,coming_soon&order=sort_order,id'),
       API.get('products?select=id,category_id,name,description,price,sale_price,sale_until,unit,images,custom_note_label,available,sort_order'),
@@ -85,7 +89,7 @@
       API.get('delivery_zones?select=id,name,fee,note&order=sort_order,id'),
       API.get('payment_accounts?select=id,kind,title,holder_name,account_number,note&order=sort_order,id'),
     ]);
-    return { settings: settingsRows[0], categories: cats, products: prods, stories: strs, zones: zs, accounts: accs, at: Date.now() };
+    return { settings: settingsRows[0], categories: cats, products: prods, stories: strs, reviews: revs, zones: zs, accounts: accs, at: Date.now() };
   }
 
   let lastFetch = 0;
@@ -184,6 +188,30 @@
       </button>`).join('');
   }
 
+  // النجوم للعرض: الممتلئة، وبعدها الفاضية
+  function starsText(n) {
+    return `<span class="stars-s" role="img" aria-label="${n} من 5">${'★'.repeat(n)}<i>${'★'.repeat(5 - n)}</i></span>`;
+  }
+
+  // الاسم بالموقع: الاسم الأول وأول حرف من الكنية (سارة محمد ← سارة م.)
+  function shortName(name) {
+    const parts = String(name).trim().split(/\s+/).filter(Boolean);
+    if (parts.length < 2) return parts[0] || '';
+    const last = parts[parts.length - 1].replace(/^ال(?=.{2})/, '');   // الحلبي ← ح.
+    return `${parts[0]} ${[...last][0]}.`;
+  }
+
+  // آراء الزباين: بس اللي اختارها صاحب المحل
+  function renderReviews() {
+    $('#reviews').hidden = !reviews.length;
+    $('#rvList').innerHTML = reviews.map(r => `
+      <figure class="rv">
+        ${starsText(r.rating)}
+        ${r.comment ? `<blockquote>${escapeHTML(r.comment)}</blockquote>` : ''}
+        <figcaption>${escapeHTML(shortName(r.name))}</figcaption>
+      </figure>`).join('');
+  }
+
   // إذا المحل مسكّر من اللوحة، منقول للزبون فوق
   function renderClosed() {
     let strip = $('#closedStrip');
@@ -214,6 +242,7 @@
     renderChips();
     renderGrid();
     renderStories();
+    renderReviews();
     updateCartUI();
   }
 
@@ -416,7 +445,7 @@
                 <button class="link-btn" data-remove="${i}">إزالة</button>
               </div>
             </div>
-            <span class="sum">${formatPrice(effectivePrice(p) * l.qty)}</span>
+            <span class="sum">${effectivePrice(p) !== p.price ? `<s>${formatPrice(p.price * l.qty)}</s>` : ''}${formatPrice(effectivePrice(p) * l.qty)}</span>
           </div>`;
       }).join('')}
       <div class="totals"><span>المجموع</span><b>${formatPrice(cartTotal())}</b></div>
@@ -438,6 +467,8 @@
     invalid_qty: 'في كمية مو مزبوطة بالسلة.',
     invalid_mode: 'اختار وقت التوصيل.',
     outside_hours: 'هالوقت برا دوام المحل، اختار وقت تاني.',
+    not_delivered: 'بتقدر تقيّم بعد ما يوصلك الطلب.',
+    invalid_rating: 'اختار عدد النجوم.',
     scheduling_disabled: 'الطلب بموعد موقّف هلق، اختار «بأقرب وقت».',
     invalid_schedule: 'الموعد لازم يكون جاي، وضمن الأيام المسموحة.',
     invalid_payment: 'اختار طريقة الدفع.',
@@ -892,6 +923,33 @@
     return o.items.length === 1 ? first.name : `${first.name} و${o.items.length - 1 === 1 ? 'صنف تاني' : (o.items.length - 1) + ' أصناف'}`;
   }
 
+  // التقييم بعد التسليم: مرة وحدة، وبعدها منعرض شو اختار
+  function reviewHTML(o) {
+    if (o.status !== 'delivered') return '';
+    if (o.review) {
+      return `
+        <div class="o-box rate">
+          <b>شكراً لتقييمك</b>
+          ${starsText(o.review.rating)}
+          ${o.review.comment ? `<p>${escapeHTML(o.review.comment)}</p>` : ''}
+        </div>`;
+    }
+    return `
+      <form class="o-box rate" id="rateForm" novalidate>
+        <b>كيف كان طلبك؟</b>
+        <div class="stars" role="group" aria-label="التقييم">
+          ${[1, 2, 3, 4, 5].map(n => `<button type="button" data-star="${n}" aria-label="${n} من 5" aria-pressed="false">★</button>`).join('')}
+        </div>
+        <label class="field">
+          <span>بدك تكتب شي؟ <small>(اختياري)</small></span>
+          <textarea name="comment" rows="2" maxlength="500"></textarea>
+        </label>
+        <p class="caption">ممكن ينعرض تقييمك بالموقع باسمك الأول وأول حرف من كنيتك.</p>
+        <p class="form-msg" id="rateMsg" role="alert"></p>
+        <button class="btn" type="submit">ابعت التقييم</button>
+      </form>`;
+  }
+
   function trackHTML(o) {
     const cur = stepIndex(o);
     const done = o.status === 'delivered';
@@ -901,6 +959,7 @@
         <button class="close" aria-label="إغلاق">×</button>
       </div>
       <div class="o-hero"><b>${HERO[o.status]}</b><span>${deliveryLine(o)}</span></div>
+      ${reviewHTML(o)}
       ${o.status === 'cancelled' ? '' : `
       <ul class="o-tl">
         ${TRACK.map((s, i) => `
@@ -925,6 +984,7 @@
   function openOrder(token) {
     let order = null;
     let timer = null;
+    let rating = 0;
     const sheet = openSheet('<div id="trackBody"><div class="empty">لحظة...</div></div>', {
       tall: true, label: 'متابعة الطلب', onClose: () => clearTimeout(timer),
     });
@@ -951,7 +1011,38 @@
     }
     load();
 
+    // بعد التسليم الـ polling بيوقف، فالنجوم والتعليق ما بينمسحوا وهو عم يكتب
+    sheet.addEventListener('submit', async e => {
+      if (e.target.id !== 'rateForm') return;
+      e.preventDefault();
+      const msg = $('#rateMsg', sheet);
+      if (!rating) { msg.textContent = ORDER_ERRORS.invalid_rating; return; }
+      const btn = e.target.querySelector('button[type="submit"]');
+      const comment = e.target.elements.comment.value.trim();
+      btn.disabled = true;
+      msg.textContent = '';
+      try {
+        await API.rpc('submit_review', { p_token: token, p_rating: rating, p_comment: comment });
+        order.review = { rating, comment };
+        body.innerHTML = trackHTML(order);
+      } catch (err) {
+        console.error(err);
+        msg.textContent = orderError(err);
+        btn.disabled = false;
+      }
+    });
+
     sheet.addEventListener('click', e => {
+      const star = e.target.closest('[data-star]');
+      if (star) {
+        rating = Number(star.dataset.star);
+        sheet.querySelectorAll('[data-star]').forEach(b => {
+          b.classList.toggle('on', Number(b.dataset.star) <= rating);
+          b.setAttribute('aria-pressed', String(Number(b.dataset.star) === rating));
+        });
+        $('#rateMsg', sheet).textContent = '';
+        return;
+      }
       if (e.target.closest('[data-reorder]') && order) reorder(order);
       else if (e.target.closest('[data-all-orders]')) openOrders();
     });
@@ -991,6 +1082,9 @@
             ${chipHTML(o.status)}
           </div>
           <div class="o-line" style="margin-top:8px">${thumbs(o)}<span class="price">${formatPrice(o.total)}</span></div>
+          ${o.status !== 'delivered' ? '' : o.review
+            ? `<div class="o-line" style="margin-top:8px">${starsText(o.review.rating)}<button class="link-btn" data-track="${escapeHTML(o.token)}">التفاصيل</button></div>`
+            : `<button class="btn" data-track="${escapeHTML(o.token)}">قيّم طلبك</button>`}
           <button class="btn ghost" data-again="${escapeHTML(o.token)}">اطلب نفسه مرة تانية</button>
         </div>`).join('');
     }

@@ -13,6 +13,7 @@
 | `08_order_ref.sql` | رقم مرجعي للطلب، لحتى ما يتكرر إذا انبعت مرتين عالنت الضعيف (بعده لازم تعيد تشغيل `03_functions.sql`) |
 | `08_notify_trigger.sql` | trigger اسمه `notify_new_order` بيستدعي `notify-order` مع كل طلب جديد عن طريق `net.http_post` |
 | `09_shop_hours.sql` | ساعة الفتح والسكر، ومنهم بتطلع مواعيد التوصيل (بعده لازم تعيد تشغيل `03_functions.sql`) |
+| `10_notified_at.sql` | عمود `notified_at`، لحتى يوصل إشعار واحد لكل طلب (لازم قبل رفع الدالة الجديدة) |
 
 كل الملفات آمنة لو انشغّلت مرتين.
 
@@ -45,6 +46,8 @@
 
 **ربط الطلبات الجديدة:** شغّل `08_notify_trigger.sql` من SQL Editor. ما في Database Webhook، والـ trigger بيبعت هيدر واحد بس هو `Content-Type`، بلا أي سر. فالدالة ما بتثق بالطلب الجاي، وبتتأكد بنفسها إنو الطلب موجود بالقاعدة وانعمل آخر 10 دقايق.
 
+**إشعار واحد لكل طلب:** الدالة بتعمل update شرطي (`where notified_at is null`)، وما بتبعت إلا إذا رجّع صف. يعني الاستدعاء التاني بيرجع `skipped`. وإذا فشل الإرسال بعد الحجز ما في إعادة محاولة، لأن `notified_at` انكتب.
+
 **إذا ما وصل الإشعار:** شوف شو رجّعت الدالة من SQL Editor:
 ```sql
 select created, status_code, content, error_msg from net._http_response order by created desc limit 5;
@@ -52,6 +55,13 @@ select created, status_code, content, error_msg from net._http_response order by
 
 - `accepted` بنتيجة الزر التجريبي معناها خدمة الإشعارات استلمت، مو إنو الموبايل عرضه. الدليل الوحيد إنو الإشعار طلع عالشاشة.
 - الإشعار بيروح لكل جهاز مشترك. بعد التجربة وقّف الإشعارات على موبايل التجربة.
+
+## منع توقف المشروع (keep-alive)
+المشروع المجاني بيتوقف بعد أسبوع بلا نشاط. `.github/workflows/keep-alive.yml` بيقرأ صف من `settings` كل يوم.
+
+- **المفتاح:** الريبو ← Settings ← Secrets and variables ← Actions ← New repository secret. الاسم `SUPABASE_KEY` والقيمة الـ publishable key. **لا تحط `service_role` أبداً.**
+- **لازم الملف يكون على `main`:** GitHub بيشغّل `schedule` و«Run workflow» من الفرع الافتراضي بس، فعلى `dev` لحاله ما بيشتغل.
+- **GitHub بيوقّف الجدولة** بالريبو العام إذا ضل 60 يوم بلا أي نشاط، وبيبعت إيميل. وقتها بينكبس **Enable workflow** من تبويب Actions.
 
 ## Security Advisor: التحذيرات اللي بتضل (متوقعة)
 بعد `07_hardening.sql` بيضل 13 تحذير (و 0 أخطاء)، وكلهن مقصودين:

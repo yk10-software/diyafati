@@ -7,11 +7,7 @@
   'use strict';
 
   const { $, state, db, fail, toast } = A;
-  const TZ = 'Asia/Damascus';
-  const DAY = 86400000;
 
-  const dayKey = date => new Intl.DateTimeFormat('en-CA', { timeZone: TZ }).format(date);
-  const dayName = date => date.toLocaleDateString('ar-SY-u-nu-latn', { day: 'numeric', month: 'long', year: 'numeric', timeZone: TZ });
   const valueText = c => c.kind === 'percent' ? `${c.value}%` : formatPrice(c.value);
 
   function statusOf(c) {
@@ -24,7 +20,7 @@
   function metaLine(c) {
     const out = [`انستعمل ${c.used_count}${c.max_uses != null ? ` من ${c.max_uses}` : ''}`];
     if (c.min_total) out.push(`من ${formatPrice(c.min_total)} وفوق`);
-    if (c.expires_at) out.push(`لحد ${dayName(new Date(c.expires_at))}`);
+    if (c.expires_at) out.push(`لحد ${A.dayName(new Date(c.expires_at))}`);
     return out.join('، ');
   }
 
@@ -90,15 +86,6 @@
     }
   }
 
-  // تاريخ الانتهاء قائمة أيام، لأن خانة التاريخ بتعرض أرقام عربية
-  function expiryOptions(iso) {
-    const chosen = iso ? dayKey(new Date(iso)) : '';
-    const days = Array.from({ length: 180 }, (_, i) => dayKey(new Date(Date.now() + i * DAY)));
-    if (chosen && !days.includes(chosen)) days.unshift(chosen);
-    return '<option value="">بلا تاريخ انتهاء</option>' + days.map(d =>
-      `<option value="${d}" ${d === chosen ? 'selected' : ''}>${dayName(new Date(`${d}T12:00:00+03:00`))}</option>`).join('');
-  }
-
   function openCoupon(id) {
     const isNew = id === null;
     const c = state.coupons.find(x => x.id === id)
@@ -136,7 +123,7 @@
         </div>
         <label class="field">
           <span>آخر يوم</span>
-          <select name="expires">${expiryOptions(c.expires_at)}</select>
+          <select name="expires">${A.expiryOptions(c.expires_at)}</select>
         </label>
         <button class="btn" type="submit" style="margin-top:6px">${isNew ? 'إضافة' : 'حفظ'}</button>
         ${isNew ? '' : '<button class="btn danger" type="button" id="cpDel" style="margin-top:10px">حذف الكوبون</button>'}
@@ -177,8 +164,7 @@
 
       const row = {
         code, kind, value, min_total: min, max_uses: max,
-        // لآخر الليل بتوقيت دمشق
-        expires_at: f.expires.value ? `${f.expires.value}T23:59:59+03:00` : null,
+        expires_at: A.endOfDay(f.expires.value),
       };
       A.busy(form, true);
       try {

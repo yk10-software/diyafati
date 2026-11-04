@@ -88,7 +88,7 @@
         <div class="a-info">
           <b>${escapeHTML(p.name)}${!p.available ? '<span class="tag">خلص</span>' : ''}${p.hidden ? '<span class="tag muted">مخفي</span>' : ''}</b>
           <span>${escapeHTML(catName(p.category_id))}</span>
-          <span class="price">${formatPrice(p.price)} <small>/ ${escapeHTML(p.unit)}</small></span>
+          <span class="price">${effectivePrice(p) !== p.price ? `<s>${formatPrice(p.price)}</s> ` : ''}${formatPrice(effectivePrice(p))} <small>/ ${escapeHTML(p.unit)}</small></span>
         </div>
         <div class="a-actions">
           <label class="switch" title="متوفر">
@@ -148,6 +148,17 @@
           <label class="field">
             <span>السعر لكل</span>
             <select name="unit">${UNITS.map(u => `<option ${u === p.unit ? 'selected' : ''}>${u}</option>`).join('')}</select>
+          </label>
+        </div>
+        <div class="two">
+          <label class="field" data-f="sale">
+            <span>سعر الخصم <small>(اختياري)</small></span>
+            <input name="sale" type="text" inputmode="numeric" dir="ltr" autocomplete="off" value="${p.sale_price ?? ''}">
+            <span class="err">لازم يكون أقل من السعر.</span>
+          </label>
+          <label class="field">
+            <span>آخر يوم للخصم</span>
+            <select name="sale_until">${A.expiryOptions(p.sale_until)}</select>
           </label>
         </div>
         <label class="field">
@@ -212,7 +223,10 @@
       const price = A.num(f.price.value);
       form.querySelector('[data-f="name"]').classList.toggle('invalid', !name);
       form.querySelector('[data-f="price"]').classList.toggle('invalid', !(price > 0));
-      if (!name || !(price > 0)) return;
+      const sale = A.num(f.sale.value);
+      const badSale = sale !== null && !(Number.isInteger(sale) && sale > 0 && sale < price);
+      form.querySelector('[data-f="sale"]').classList.toggle('invalid', badSale);
+      if (!name || !(price > 0) || badSale) return;
 
       A.busy(form, true);
       const uploaded = [];
@@ -228,6 +242,8 @@
         const row = {
           name,
           price: Math.round(price),
+          sale_price: sale,
+          sale_until: sale === null ? null : A.endOfDay(f.sale_until.value),
           unit: f.unit.value,
           category_id: f.category_id.value ? Number(f.category_id.value) : null,
           description: f.description.value.trim(),

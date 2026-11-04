@@ -6,6 +6,7 @@
 //   2) trigger عـ orders (net.http_post) على كل طلب جديد: بيبعت صف الطلب.
 //      ما في سر مشترك: منتأكد إنو الطلب موجود فعلاً بالقاعدة وانعمل هلق،
 //      ومنبني نص الإشعار من القاعدة، مو من اللي انبعت.
+//      وكل طلب إله إشعار واحد بس (notified_at، ملف 10_notified_at.sql).
 // لازم تنعمل مع Verify JWT مطفي، لأن الـ trigger ما معه JWT، والفحص صاير هون.
 // ما في أي مكتبة خارجية: التشفير كله WebCrypto، حسب RFC 8291 و RFC 8292.
 //
@@ -138,14 +139,20 @@ const TEST_MESSAGE = () => ({
   url: 'admin.html', tag: `test-${Date.now()}`,
 });
 
-// منجيب الطلب من القاعدة: لازم يكون موجود وانعمل آخر 10 دقايق
+// منحجز الإشعار بـ update شرطي: الطلب لازم يكون موجود، وانعمل آخر 10 دقايق،
+// و notified_at فاضي. القاعدة بتسمح لاستدعاء واحد بس ياخد الصف،
+// فإذا انستدعت الدالة مرتين لنفس الطلب، الإشعار بيروح مرة وحدة.
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 async function orderMessage(id) {
   if (!UUID.test(String(id))) return null;
   const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
   const res = await fetch(
-    `${SUPABASE_URL}/rest/v1/orders?id=eq.${id}&created_at=gte.${encodeURIComponent(since)}&select=code,customer_name,total`,
-    { headers: adminHeaders() });
+    `${SUPABASE_URL}/rest/v1/orders?id=eq.${id}&created_at=gte.${encodeURIComponent(since)}&notified_at=is.null&select=code,customer_name,total`,
+    {
+      method: 'PATCH',
+      headers: { ...adminHeaders(), 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify({ notified_at: new Date().toISOString() }),
+    });
   if (!res.ok) throw new Error(`order_${res.status}`);
   const [o] = await res.json();
   if (!o) return null;
@@ -177,8 +184,14 @@ Deno.serve(async req => {
 
   let message;
   if (orderId) {
-    message = await orderMessage(orderId).catch(err => { console.error(err); return null; });
-    if (!message) return reply({ error: 'order_not_found' }, 404);
+    try {
+      message = await orderMessage(orderId);
+    } catch (err) {
+      console.error(err);
+      return reply({ error: 'order_check_failed' }, 500);
+    }
+    // ما في صف: الطلب مو موجود، أو قديم، أو انبعت إشعاره من قبل
+    if (!message) return reply({ skipped: true });
   } else {
     if (!(await isAdmin(req))) return reply({ error: 'unauthorized' }, 401);
     message = TEST_MESSAGE();

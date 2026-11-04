@@ -13,7 +13,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="ضيافتي">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <link rel="stylesheet" href="styles.css?v=10">
+  <link rel="stylesheet" href="styles.css?v=12">
 </head>
 <body>
   <div class="app">
@@ -54,6 +54,11 @@
 
     <main class="grid" id="grid" aria-live="polite"></main>
 
+    <section class="reviews" id="reviews" aria-labelledby="rvTitle" hidden>
+      <h2 id="rvTitle">آراء الزباين</h2>
+      <div class="rv-list" id="rvList"></div>
+    </section>
+
     <footer class="footer">
       <img src="img/logo-full.png" alt="ضيافتي" width="60" height="72">
       <p>عندك سؤال؟ <a id="waLink" href="#" target="_blank" rel="noopener">راسلنا عالواتساب</a></p>
@@ -66,9 +71,9 @@
     <span id="cartBarTotal"></span>
   </button>
 
-  <script src="config.js?v=10"></script>
-  <script src="api.js?v=10"></script>
-  <script src="data.js?v=10"></script>
-  <script src="app.js?v=10"></script>
+  <script src="config.js?v=12"></script>
+  <script src="api.js?v=12"></script>
+  <script src="data.js?v=12"></script>
+  <script src="app.js?v=12"></script>
 </body>
 </html>

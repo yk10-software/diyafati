@@ -282,6 +282,7 @@ button { cursor: pointer; }
 .c-item .note { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
 .c-item .ctrl { display: flex; align-items: center; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
 .c-item .sum { font-weight: 600; color: var(--foil); white-space: nowrap; }
+.c-item .sum s { display: block; color: var(--muted); font-weight: 400; font-size: 12.5px; }
 .totals { display: flex; justify-content: space-between; align-items: baseline; margin: 16px 0; font-weight: 600; font-size: 17px; }
 .totals b { color: var(--foil); font-size: 20px; }
 
@@ -413,6 +414,51 @@ body.in-panel .toast { bottom: calc(150px + var(--safe-b)); }
 .a-nav svg { width: 24px; height: 24px; }
 .a-nav [aria-current="page"] { color: var(--cocoa); font-weight: 600; }
 .a-nav [aria-current="page"]::before { content: ''; position: absolute; top: -9px; width: 28px; height: 3px; border-radius: 2px; background: var(--cocoa); }
+
+/* النجوم */
+.stars-s { color: var(--foil); letter-spacing: 1px; font-size: 15px; white-space: nowrap; }
+.stars-s i { color: var(--line); font-style: normal; }
+.rate { text-align: center; }
+.rate > b { display: block; font-family: var(--f-display); font-weight: 500; font-size: 18px; color: var(--cocoa); margin-bottom: 4px; }
+.rate p { margin: 6px 0 0; }
+.rate .caption { margin: -6px 0 10px; }
+.rate .field { text-align: start; margin-top: 8px; }
+.stars { display: flex; justify-content: center; gap: 2px; }
+.stars button { width: 48px; height: 48px; padding: 0; border: 0; background: none; font-size: 34px; line-height: 1; color: var(--line); cursor: pointer; }
+.stars button.on { color: var(--foil); }
+
+/* آراء الزباين بالموقع */
+.reviews { margin: 28px 0 0; }
+.reviews h2 { margin: 0 16px 10px; font-family: var(--f-display); font-weight: 500; font-size: 21px; color: var(--cocoa); }
+.rv-list { display: flex; gap: 10px; padding: 0 16px 4px; overflow-x: auto; scrollbar-width: none; scroll-snap-type: x proximity; }
+.rv-list::-webkit-scrollbar { display: none; }
+.rv { flex: 0 0 min(250px, 78%); margin: 0; padding: 12px 14px; background: #fff; border: 1px solid var(--line); border-radius: 14px; scroll-snap-align: start; }
+.rv blockquote { margin: 6px 0; font-size: 14.5px; line-height: 1.55; overflow-wrap: anywhere; }
+.rv figcaption { margin-top: 6px; font-size: 13px; color: var(--muted); }
+
+/* شاشة التقييمات باللوحة */
+.rv-row .lbl b { font-weight: 600; }
+.rv-row .lbl p { margin: 3px 0; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.rv-row .lbl > span { font-size: 12.5px; color: var(--muted); }
+
+/* القصص باللوحة */
+.a-stories { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
+.a-stories::-webkit-scrollbar { display: none; }
+.a-stories .s { flex: 0 0 66px; padding: 0; border: 0; background: none; font: inherit; font-size: 12px; color: var(--cocoa); text-align: center; cursor: pointer; }
+.a-stories .f { display: grid; place-items: center; width: 62px; height: 78px; margin: 0 auto 4px; padding: 2px; border: 2px solid var(--cocoa); border-radius: var(--arch); }
+.a-stories .f img { width: 100%; height: 100%; object-fit: cover; border-radius: var(--arch); }
+.a-stories .s-new .f { border-style: dashed; font-size: 26px; background: var(--butter-soft); }
+.a-stories .t { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.a-stories .off { opacity: .45; }
+.si-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.si-row > img { flex: 0 0 48px; width: 48px; height: 60px; object-fit: cover; border-radius: var(--arch); background: var(--photo); }
+.si-mid { flex: 1; min-width: 0; }
+.si-mid select { width: 100%; height: 40px; padding: 0 8px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); font: inherit; font-size: 14px; }
+.si-mid small { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+.si-act { display: flex; gap: 4px; }
+.si-act .sq { width: 34px; height: 34px; }
+.si-act .sq:disabled { opacity: .3; }
+.si-add { display: block; text-align: center; cursor: pointer; margin-bottom: 12px; }
 
 /* الرئيسية */
 .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }

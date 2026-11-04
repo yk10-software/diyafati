@@ -8,6 +8,8 @@
      admin-coupons.js    الكوبونات
      admin-products.js   الأصناف
      admin-categories.js الأقسام
+     admin-stories.js    القصص (تحت الأقسام)
+     admin-reviews.js    التقييمات
      admin-settings.js   الإعدادات (التوصيل، الدفع، الطلبات)
    الملفات بتتشارك بالكائن `A`.
    ========================================================= */
@@ -18,7 +20,7 @@ const A = (() => {
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 
   // كل بيانات المحل بعد التحميل
-  const state = { settings: null, cats: [], products: [], zones: [], accounts: [], coupons: [], orders: [] };
+  const state = { settings: null, cats: [], products: [], zones: [], accounts: [], coupons: [], stories: [], orders: [] };
   const views = {};          // كل ملف شاشة بيسجّل حاله هون
   let user = null;
   let liveStarted = false;   // الـ realtime للطلبات بيشتغل مرة وحدة
@@ -65,19 +67,20 @@ const A = (() => {
   const loadOrders = () => db(sb.from('orders').select('*, order_items(*)').order('created_at', { ascending: false }).limit(300));
 
   async function loadAll() {
-    const [settings, cats, products, zones, accounts, coupons, orders] = await Promise.all([
+    const [settings, cats, products, zones, accounts, coupons, stories, orders] = await Promise.all([
       db(sb.from('settings').select('*').eq('id', 1).single()),
       db(sb.from('categories').select('*').order('sort_order').order('id')),
       db(sb.from('products').select('*').order('id', { ascending: false })),
       db(sb.from('delivery_zones').select('*').order('sort_order').order('id')),
       db(sb.from('payment_accounts').select('*').order('sort_order').order('id')),
       db(sb.from('coupons').select('*').order('created_at', { ascending: false })),
+      db(sb.from('stories').select('*, story_items(*)').order('sort_order').order('id')),
       loadOrders(),
     ]);
-    Object.assign(state, { settings, cats, products, zones, accounts, coupons, orders });
+    Object.assign(state, { settings, cats, products, zones, accounts, coupons, stories, orders });
   }
 
-  /* ---------- التنقل بين الشاشات (#home، #orders، #products، #categories، #settings، #coupons) ---------- */
+  /* ---------- التنقل بين الشاشات (#home، #orders، #products، #categories، #settings، #coupons، #reviews) ---------- */
   function current() {
     const name = location.hash.slice(1);
     return views[name] ? name : 'home';
@@ -166,6 +169,21 @@ const A = (() => {
     clearTimeout(toastTimer);
     toastTimer = setTimeout(() => t.remove(), 2600);
   }
+
+  /* ---------- تاريخ انتهاء (كوبون أو خصم) ----------
+     قائمة أيام بدل خانة التاريخ، لأن الخانة بتعرض أرقام عربية. */
+  const dayKey = date => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Damascus' }).format(date);
+  const dayName = date => date.toLocaleDateString('ar-SY-u-nu-latn', { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'Asia/Damascus' });
+
+  function expiryOptions(iso) {
+    const chosen = iso ? dayKey(new Date(iso)) : '';
+    const days = Array.from({ length: 180 }, (_, i) => dayKey(new Date(Date.now() + i * 86400000)));
+    if (chosen && !days.includes(chosen)) days.unshift(chosen);
+    return '<option value="">بلا تاريخ انتهاء</option>' + days.map(d =>
+      `<option value="${d}" ${d === chosen ? 'selected' : ''}>${dayName(new Date(`${d}T12:00:00+03:00`))}</option>`).join('');
+  }
+  // لآخر الليل بتوقيت دمشق
+  const endOfDay = day => (day ? `${day}T23:59:59+03:00` : null);
 
   /* ---------- الصور ----------
      منصغّر الصورة بالمتصفح لـ 900px قبل الرفع، وبترتفع على سطل images. */
@@ -406,7 +424,7 @@ const A = (() => {
   const api = {
     $, $$, state, views, icon, countAr, num, db, fail, toast, loadOrders,
     openSheet, closeSheet, confirmTwice, clearOnInput, requireFields, busy,
-    resizeImage, uploadImage, removeImages, thumb,
+    resizeImage, uploadImage, removeImages, thumb, dayName, expiryOptions, endOfDay,
     render, refreshHead, openAccount, current,
     get user() { return user; },
   };

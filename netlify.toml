@@ -1,0 +1,5 @@
+# فرع وهمي لموقع diyafati-dev: البناء بيفشل عن قصد لحتى ما يصير production deploy (15 رصيد).
+# لا تدمجه ولا تعدّله. الشرح بـ CLAUDE.md على فرع dev.
+[build]
+  publish = "."
+  command = "exit 1"

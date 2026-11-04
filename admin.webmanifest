@@ -1,0 +1,19 @@
+{
+  "id": "admin.html",
+  "name": "لوحة ضيافتي",
+  "short_name": "لوحة ضيافتي",
+  "description": "لوحة تحكم محل ضيافتي",
+  "lang": "ar",
+  "dir": "rtl",
+  "start_url": "admin.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F9F7A4",
+  "theme_color": "#F9F7A4",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

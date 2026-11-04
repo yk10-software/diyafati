@@ -390,6 +390,9 @@ const A = (() => {
   // منستنى ملفات الشاشات تنحمّل كلها قبل ما نبلّش
   document.addEventListener('DOMContentLoaded', boot);
 
+  // الـ service worker هو اللي بيستقبل الإشعارات
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(err => console.warn(err));
+
   return {
     $, $$, state, views, icon, countAr, num, db, fail, toast,
     openSheet, closeSheet, confirmTwice, clearOnInput, requireFields, busy,

@@ -1,11 +1,11 @@
 /* ضيافتي — بيخلّي التطبيق يفتح بسرعة وحتى لو النت ضعيف.
    كل ما تعدّل ملفات وترفعها، كبّر رقم النسخة هون، وكمان رقم ?v= بـ index.html و admin.html وبالقائمة تحت. */
-const CACHE = 'diyafati-v8';
+const CACHE = 'diyafati-v9';
 const SHELL = [
-  './', 'index.html', 'admin.html', 'styles.css?v=7', 'data.js?v=7', 'app.js?v=7', 'admin.js?v=7',
-  'reset.html', 'config.js?v=7', 'api.js?v=7', 'supa.js?v=7', 'reset.js?v=7',
-  'admin-products.js?v=7', 'admin-categories.js?v=7', 'admin-settings.js?v=7',
-  'manifest.webmanifest',
+  './', 'index.html', 'admin.html', 'styles.css?v=8', 'data.js?v=8', 'app.js?v=8', 'admin.js?v=8',
+  'reset.html', 'config.js?v=8', 'api.js?v=8', 'supa.js?v=8', 'reset.js?v=8',
+  'admin-products.js?v=8', 'admin-categories.js?v=8', 'admin-settings.js?v=8', 'admin-push.js?v=8',
+  'manifest.webmanifest', 'admin.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-64.png',
   'img/logo-mark.png', 'img/logo-word.png', 'img/logo-full.png',
   'img/harisa-boy.jpg', 'img/harisa-girl.jpg', 'img/choco-mix.jpg', 'img/choco-lotus.jpg',
@@ -52,4 +52,38 @@ self.addEventListener('fetch', e => {
       return cached || network;
     })
   );
+});
+
+/* ---------- الإشعارات ---------- */
+// بيوصل من notify-order: { title, body, url, tag }. لازم نعرض إشعار بكل مرة،
+// وإلا المتصفح بيعتبرنا مخالفين وبيوقف الإشعارات.
+self.addEventListener('push', e => {
+  let d = {};
+  try { d = e.data.json(); } catch (err) { /* رسالة مو JSON */ }
+  e.waitUntil(self.registration.showNotification(d.title || 'ضيافتي', {
+    body: d.body || '',
+    icon: 'icons/icon-192.png',
+    badge: 'icons/favicon-64.png',
+    tag: d.tag,
+    lang: 'ar',
+    dir: 'rtl',
+    vibrate: [200, 100, 200],
+    data: { url: d.url || 'admin.html' },
+  }));
+});
+
+// لما تكبس عالإشعار: إذا اللوحة مفتوحة منروح عليها، وإلا منفتحها
+self.addEventListener('notificationclick', e => {
+  e.notification.close();
+  const url = new URL(e.notification.data.url, self.registration.scope).href;
+  e.waitUntil((async () => {
+    const list = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const open = list.find(c => new URL(c.url).pathname.endsWith('admin.html'));
+    if (open) {
+      await open.focus();
+      if (open.url !== url) await open.navigate(url);
+      return;
+    }
+    await clients.openWindow(url);
+  })());
 });

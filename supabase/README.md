@@ -28,10 +28,22 @@
 | | هلق (Live Server) | بعد الدومين |
 |---|---|---|
 | **Site URL** | `http://127.0.0.1:5500` | `https://الدومين` |
-| **Redirect URLs** | `http://127.0.0.1:5500/**` و `http://localhost:5500/**` | `https://الدومين/**` (وشيل روابط localhost قبل التسليم) |
+| **Redirect URLs** | `http://127.0.0.1:5500/**` و `http://localhost:5500/**` و `https://dev--diyafati-dev.netlify.app/**` | `https://الدومين/**` (وشيل روابط localhost و dev قبل التسليم) |
 
 - رابط «نسيت كلمة السر» بيرجع على `reset.html` بنفس المكان اللي انطلب منه، ولازم يكون مسموح بـ Redirect URLs، وإلا Supabase بيبعت على الـ Site URL.
 - **إيميلات Supabase المجانية** بتوصل بس لإيميلات أعضاء الفريق بالمشروع (ولعدد قليل بالساعة). لهيك قبل التسليم لازم نضبط **SMTP خاص** (Authentication ← Emails ← SMTP Settings)، متل Resend أو Gmail بـ App Password. بدونه إيميل «نسيت كلمة السر» ما رح يوصل لصاحب المحل.
+
+## الإشعارات (Edge Function: `notify-order`)
+الكود بـ `functions/notify-order/index.ts`، ملف واحد بلا مكتبات. المفتاح العام بـ `config.js`، والباقي أسرار.
+
+**الأسرار** (Edge Functions ← Secrets)، وما بتنحط بالريبو أبداً: `VAPID_PUBLIC_KEY` و `VAPID_PRIVATE_KEY` و `VAPID_SUBJECT` و `WEBHOOK_SECRET`.
+
+**الرفع:** Edge Functions ← Deploy a new function ← Via Editor. الاسم `notify-order`، الصق الملف، Deploy. بعدها من إعدادات الدالة طفّي **Verify JWT**، لأن الدالة بتفحص الصلاحية لحالها (`is_admin` أو `x-webhook-secret`).
+
+**ربط الطلبات الجديدة** (منعمله بعد ما تنجح التجربة): Integrations ← Database Webhooks ← Create. الجدول `orders`، الحدث `Insert`، النوع Supabase Edge Function، الدالة `notify-order`، وضيف هيدر `x-webhook-secret` قيمته نفس `WEBHOOK_SECRET`.
+
+- `accepted` بنتيجة الزر التجريبي معناها خدمة الإشعارات استلمت، مو إنو الموبايل عرضه. الدليل الوحيد إنو الإشعار طلع عالشاشة.
+- الإشعار بيروح لكل جهاز مشترك. بعد التجربة وقّف الإشعارات على موبايل التجربة.
 
 ## Security Advisor: التحذيرات اللي بتضل (متوقعة)
 بعد `07_hardening.sql` بيضل 13 تحذير (و 0 أخطاء)، وكلهن مقصودين:

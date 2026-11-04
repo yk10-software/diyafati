@@ -85,6 +85,9 @@
         </div>` : ''}
       </div>
 
+      <div class="sec"><h2>الإشعارات</h2></div>
+      <div class="a-card" id="pushBox"></div>
+
       <div class="sec"><h2>الحساب</h2></div>
       <div class="a-card">
         <div class="srow">
@@ -98,6 +101,7 @@
       </div>
     `;
     $('#view').replaceChildren(el);
+    A.push.render($('#pushBox', el));
 
     // المفاتيح (switches)
     $('#sOpen', el).addEventListener('change', e => saveSettings({ shop_open: e.target.checked },

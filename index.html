@@ -13,7 +13,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="ضيافتي">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <link rel="stylesheet" href="styles.css?v=8">
+  <link rel="stylesheet" href="styles.css?v=10">
 </head>
 <body>
   <div class="app">
@@ -23,10 +23,15 @@
           <img class="mark" src="img/logo-mark.png" alt="" width="38" height="40">
           <img class="word" src="img/logo-word.png" alt="ضيافتي" width="97" height="26">
         </a>
+        <div class="top-btns">
+        <button class="icon-btn" id="ordersBtn" aria-label="طلباتي">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z"/><path d="M9 8h6M9 12h6M9 16h3"/></svg>
+        </button>
         <button class="icon-btn" id="cartBtn" aria-label="السلة">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1.2 11.1a2 2 0 0 1-2 1.9H8.2a2 2 0 0 1-2-1.9L5 8Z"/><path d="M9 8V6.5a3 3 0 0 1 6 0V8"/></svg>
           <span class="badge" id="cartCount" hidden>0</span>
         </button>
+        </div>
       </header>
       <p class="tagline">ضيافة وأزهار لمناسباتكم</p>
       <nav class="stories" id="stories" aria-label="قصص من شغلنا"></nav>
@@ -62,9 +67,9 @@
     <span id="cartBarTotal"></span>
   </button>
 
-  <script src="config.js?v=8"></script>
-  <script src="api.js?v=8"></script>
-  <script src="data.js?v=8"></script>
-  <script src="app.js?v=8"></script>
+  <script src="config.js?v=10"></script>
+  <script src="api.js?v=10"></script>
+  <script src="data.js?v=10"></script>
+  <script src="app.js?v=10"></script>
 </body>
 </html>

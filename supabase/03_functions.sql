@@ -13,6 +13,7 @@
 --   shop_closed, busy, too_many_orders, invalid_name, invalid_phone,
 --   invalid_address, invalid_zone, empty_cart, product_unavailable,
 --   invalid_qty, invalid_mode, scheduling_disabled, invalid_schedule,
+--   outside_hours,
 --   invalid_payment, payment_unavailable, invalid_coupon, coupon_min_total,
 --   order_not_found, not_delivered, invalid_rating
 -- =========================================================
@@ -107,7 +108,33 @@ declare
   v_code   text;
   v_token  text;
   v_id     uuid;
+  v_ref    uuid := nullif(p_order->>'client_ref', '')::uuid;
+  v_old    public.orders;
 begin
+  -- نفس الطلب وصل مرتين (النت ضعيف والزبون رجع كبس): منرجّع الطلب نفسه
+  if v_ref is not null then
+    select * into v_old from public.orders where client_ref = v_ref;
+    if found then
+      return jsonb_build_object(
+        'id',            v_old.id,
+        'code',          v_old.code,
+        'token',         v_old.token,
+        'subtotal',      v_old.subtotal,
+        'discount',      v_old.discount,
+        'delivery_fee',  v_old.delivery_fee,
+        'total',         v_old.total,
+        'payment_label', v_old.payment_label,
+        'items', coalesce((
+          select jsonb_agg(jsonb_build_object(
+            'product_id', i.product_id, 'name', i.name, 'image', i.image, 'unit', i.unit,
+            'qty', i.qty, 'unit_price', i.unit_price, 'line_total', i.line_total, 'note', i.note
+          ) order by i.id)
+          from public.order_items i where i.order_id = v_old.id
+        ), '[]'::jsonb)
+      );
+    end if;
+  end if;
+
   -- المحل مفتوح؟
   select * into s from public.settings where id = 1;
   if not found or not s.shop_open then
@@ -192,6 +219,10 @@ begin
        or v_sched > now() + make_interval(days => s.schedule_max_days) then
       raise exception 'invalid_schedule';
     end if;
+    -- الموعد لازم يكون ضمن دوام المحل بتوقيت دمشق
+    if (v_sched at time zone 'Asia/Damascus')::time not between s.open_time and s.close_time then
+      raise exception 'outside_hours';
+    end if;
   elsif v_mode <> 'asap' then
     raise exception 'invalid_mode';
   end if;
@@ -238,11 +269,11 @@ begin
   v_token := replace(gen_random_uuid()::text, '-', '') || replace(gen_random_uuid()::text, '-', '');
 
   insert into public.orders (
-    code, token, customer_name, phone, zone_id, zone_name, address,
+    code, token, client_ref, customer_name, phone, zone_id, zone_name, address,
     delivery_mode, scheduled_at, payment_method, payment_account_id, payment_label,
     notes, coupon_code, subtotal, discount, delivery_fee, total
   ) values (
-    v_code, v_token, v_name, v_phone, z.id, z.name, v_address,
+    v_code, v_token, v_ref, v_name, v_phone, z.id, z.name, v_address,
     v_mode, v_sched, v_method, acc.id, v_payment_label,
     v_notes, v_coupon, v_subtotal, v_discount, v_fee, v_total
   )

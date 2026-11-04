@@ -3,6 +3,9 @@
    هون: تسجيل الدخول، والتنقل بين الشاشات، وتحميل البيانات من Supabase،
    وأدوات مشتركة (نوافذ، إشعارات، صور).
    كل شاشة بملف لحالها:
+     admin-home.js       الرئيسية
+     admin-orders.js     الطلبات
+     admin-coupons.js    الكوبونات
      admin-products.js   الأصناف
      admin-categories.js الأقسام
      admin-settings.js   الإعدادات (التوصيل، الدفع، الطلبات)
@@ -15,9 +18,10 @@ const A = (() => {
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 
   // كل بيانات المحل بعد التحميل
-  const state = { settings: null, cats: [], products: [], zones: [], accounts: [] };
+  const state = { settings: null, cats: [], products: [], zones: [], accounts: [], coupons: [], orders: [] };
   const views = {};          // كل ملف شاشة بيسجّل حاله هون
   let user = null;
+  let liveStarted = false;   // الـ realtime للطلبات بيشتغل مرة وحدة
 
   /* ---------- أدوات صغيرة ---------- */
   const icon = name => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -57,21 +61,26 @@ const A = (() => {
   const fail = err => toast(dbErrorAr(err));
 
   /* ---------- تحميل كل البيانات ---------- */
+  // آخر 300 طلب مع أصنافها. شاشة الرئيسية كمان بتحسب منهن أرقامها
+  const loadOrders = () => db(sb.from('orders').select('*, order_items(*)').order('created_at', { ascending: false }).limit(300));
+
   async function loadAll() {
-    const [settings, cats, products, zones, accounts] = await Promise.all([
+    const [settings, cats, products, zones, accounts, coupons, orders] = await Promise.all([
       db(sb.from('settings').select('*').eq('id', 1).single()),
       db(sb.from('categories').select('*').order('sort_order').order('id')),
       db(sb.from('products').select('*').order('id', { ascending: false })),
       db(sb.from('delivery_zones').select('*').order('sort_order').order('id')),
       db(sb.from('payment_accounts').select('*').order('sort_order').order('id')),
+      db(sb.from('coupons').select('*').order('created_at', { ascending: false })),
+      loadOrders(),
     ]);
-    Object.assign(state, { settings, cats, products, zones, accounts });
+    Object.assign(state, { settings, cats, products, zones, accounts, coupons, orders });
   }
 
-  /* ---------- التنقل بين الشاشات (#products، #categories، #settings) ---------- */
+  /* ---------- التنقل بين الشاشات (#home، #orders، #products، #categories، #settings، #coupons) ---------- */
   function current() {
     const name = location.hash.slice(1);
-    return views[name] ? name : 'products';
+    return views[name] ? name : 'home';
   }
   function render() {
     if (!user) return;
@@ -79,7 +88,7 @@ const A = (() => {
     const view = views[name];
     $('#pTitle').textContent = view.title;
     refreshHead();
-    $$('.a-nav button').forEach(b => b.setAttribute('aria-current', b.dataset.go === name ? 'page' : 'false'));
+    $$('.a-nav button').forEach(b => b.setAttribute('aria-current', b.dataset.go === (view.parent || name) ? 'page' : 'false'));
     closeSheet();
     view.render($('#view'));
     window.scrollTo(0, 0);
@@ -236,6 +245,7 @@ const A = (() => {
     document.body.classList.add('in-panel');
     $('#panel').hidden = false;
     render();
+    if (!liveStarted && api.ordersLive) { liveStarted = true; api.ordersLive(); }
   }
 
   async function isAdmin() {
@@ -393,11 +403,12 @@ const A = (() => {
   // الـ service worker هو اللي بيستقبل الإشعارات
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(err => console.warn(err));
 
-  return {
-    $, $$, state, views, icon, countAr, num, db, fail, toast,
+  const api = {
+    $, $$, state, views, icon, countAr, num, db, fail, toast, loadOrders,
     openSheet, closeSheet, confirmTwice, clearOnInput, requireFields, busy,
     resizeImage, uploadImage, removeImages, thumb,
-    render, refreshHead, openAccount,
+    render, refreshHead, openAccount, current,
     get user() { return user; },
   };
+  return api;
 })();

@@ -10,6 +10,9 @@
 | `05_make_admin.sql` | بيخلّي حساب صاحب المحل أدمن |
 | `06_test.sql` | فحص إنو الزبون ما بيقدر يغش أو يقرأ شي ممنوع (ما بيترك أثر) |
 | `07_hardening.sql` | تصليحات الـ Security Advisor (للمشروع اللي انشغّل عليه 03 القديم) |
+| `08_order_ref.sql` | رقم مرجعي للطلب، لحتى ما يتكرر إذا انبعت مرتين عالنت الضعيف (بعده لازم تعيد تشغيل `03_functions.sql`) |
+| `08_notify_trigger.sql` | trigger اسمه `notify_new_order` بيستدعي `notify-order` مع كل طلب جديد عن طريق `net.http_post` |
+| `09_shop_hours.sql` | ساعة الفتح والسكر، ومنهم بتطلع مواعيد التوصيل (بعده لازم تعيد تشغيل `03_functions.sql`) |
 
 كل الملفات آمنة لو انشغّلت مرتين.
 
@@ -36,11 +39,16 @@
 ## الإشعارات (Edge Function: `notify-order`)
 الكود بـ `functions/notify-order/index.ts`، ملف واحد بلا مكتبات. المفتاح العام بـ `config.js`، والباقي أسرار.
 
-**الأسرار** (Edge Functions ← Secrets)، وما بتنحط بالريبو أبداً: `VAPID_PUBLIC_KEY` و `VAPID_PRIVATE_KEY` و `VAPID_SUBJECT` و `WEBHOOK_SECRET`.
+**الأسرار** (Edge Functions ← Secrets)، وما بتنحط بالريبو أبداً: `VAPID_PUBLIC_KEY` و `VAPID_PRIVATE_KEY` و `VAPID_SUBJECT`.
 
-**الرفع:** Edge Functions ← Deploy a new function ← Via Editor. الاسم `notify-order`، الصق الملف، Deploy. بعدها من إعدادات الدالة طفّي **Verify JWT**، لأن الدالة بتفحص الصلاحية لحالها (`is_admin` أو `x-webhook-secret`).
+**الرفع:** Edge Functions ← Deploy a new function ← Via Editor. الاسم `notify-order`، الصق الملف، Deploy. بعدها من إعدادات الدالة طفّي **Verify JWT**، لأن الدالة بتفحص الطلب لحالها.
 
-**ربط الطلبات الجديدة** (منعمله بعد ما تنجح التجربة): Integrations ← Database Webhooks ← Create. الجدول `orders`، الحدث `Insert`، النوع Supabase Edge Function، الدالة `notify-order`، وضيف هيدر `x-webhook-secret` قيمته نفس `WEBHOOK_SECRET`.
+**ربط الطلبات الجديدة:** شغّل `08_notify_trigger.sql` من SQL Editor. ما في Database Webhook، والـ trigger بيبعت هيدر واحد بس هو `Content-Type`، بلا أي سر. فالدالة ما بتثق بالطلب الجاي، وبتتأكد بنفسها إنو الطلب موجود بالقاعدة وانعمل آخر 10 دقايق.
+
+**إذا ما وصل الإشعار:** شوف شو رجّعت الدالة من SQL Editor:
+```sql
+select created, status_code, content, error_msg from net._http_response order by created desc limit 5;
+```
 
 - `accepted` بنتيجة الزر التجريبي معناها خدمة الإشعارات استلمت، مو إنو الموبايل عرضه. الدليل الوحيد إنو الإشعار طلع عالشاشة.
 - الإشعار بيروح لكل جهاز مشترك. بعد التجربة وقّف الإشعارات على موبايل التجربة.

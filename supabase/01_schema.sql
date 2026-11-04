@@ -18,11 +18,14 @@ create table if not exists public.settings (
   shop_open          boolean not null default true,      -- «المحل مفتوح للطلبات»
   whatsapp           text    not null default '963953334642',
   hours_label        text    not null default 'كل يوم من 9 الصبح لـ 10 بالليل',
+  open_time          time    not null default '09:00',   -- الدوام: منه بتطلع مواعيد التوصيل
+  close_time         time    not null default '22:00',
   min_kilo           numeric(5,1) not null default 0.5,  -- أقل كمية لصنف بالكيلو
   scheduled_enabled  boolean not null default true,      -- «استقبال طلبات بموعد»
   schedule_max_days  int     not null default 30,        -- لحد كم يوم لقدام
   cash_enabled       boolean not null default true,      -- كاش عند الاستلام
-  updated_at         timestamptz not null default now()
+  updated_at         timestamptz not null default now(),
+  constraint settings_hours_order check (close_time > open_time)
 );
 
 -- ---------- الأقسام ----------
@@ -123,6 +126,7 @@ create table if not exists public.orders (
   id               uuid primary key default gen_random_uuid(),
   code             text not null unique,        -- رقم الطلب للعرض: D35672
   token            text not null unique,        -- سر طويل، الزبون بيتابع طلبه فيه
+  client_ref       uuid unique,                 -- لحتى ما يتكرر الطلب إذا انبعت مرتين
   status           text not null default 'new'
                    check (status in ('new', 'preparing', 'on_way', 'delivered', 'cancelled')),
   customer_name    text not null,

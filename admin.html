@@ -12,11 +12,18 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="لوحة ضيافتي">
-  <link rel="stylesheet" href="styles.css?v=8">
+  <link rel="stylesheet" href="styles.css?v=10">
 </head>
 <body>
   <!-- الأيقونات (من design/panel.html) -->
   <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 10.5 12 4l8 6.5V19a1 1 0 0 1-1 1h-4.5v-5.5h-5V20H5a1 1 0 0 1-1-1v-8.5Z"/></symbol>
+    <symbol id="i-orders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12v18l-3-2-3 2-3-2-3 2V3Z"/><path d="M9 8h6M9 12h6M9 16h3"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a1 1 0 0 1-1 1A16 16 0 0 1 4 5a1 1 0 0 1 1-1Z"/></symbol>
+    <symbol id="i-wa" viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm4.5 12.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.3.8 3.2.7.5-.1 1.5-.6 1.8-1.2.2-.6.2-1.1.1-1.2l-.5-.3Z"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 21s-6.5-6-6.5-11a6.5 6.5 0 0 1 13 0c0 5-6.5 11-6.5 11Z"/><circle cx="12" cy="10" r="2.3"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></symbol>
+    <symbol id="i-cash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/></symbol>
     <symbol id="i-box" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5v-9Z"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9"/></symbol>
     <symbol id="i-grid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="2"/><rect x="13" y="4" width="7" height="7" rx="2"/><rect x="4" y="13" width="7" height="7" rx="2"/><rect x="13" y="13" width="7" height="7" rx="2"/></symbol>
     <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2 5.5 5.5"/></symbol>
@@ -81,6 +88,8 @@
       </header>
       <main id="view" class="p-body"></main>
       <nav class="a-nav" aria-label="أقسام اللوحة">
+        <button type="button" data-go="home"><svg aria-hidden="true"><use href="#i-home"/></svg>الرئيسية</button>
+        <button type="button" data-go="orders"><svg aria-hidden="true"><use href="#i-orders"/></svg>الطلبات<span class="a-dot" id="navNew" hidden></span></button>
         <button type="button" data-go="products"><svg aria-hidden="true"><use href="#i-box"/></svg>الأصناف</button>
         <button type="button" data-go="categories"><svg aria-hidden="true"><use href="#i-grid"/></svg>الأقسام</button>
         <button type="button" data-go="settings"><svg aria-hidden="true"><use href="#i-gear"/></svg>الإعدادات</button>
@@ -92,14 +101,17 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.118.0/dist/umd/supabase.min.js"
           integrity="sha384-UagCvVPT5XXA0Hx+nJYUAGBFseHT9zBgpJMSebsAxl9lciTwbT+39j5VfRjdP5Tp"
           crossorigin="anonymous"></script>
-  <script src="config.js?v=8"></script>
-  <script src="supa.js?v=8"></script>
-  <script src="data.js?v=8"></script>
-  <script src="admin.js?v=8"></script>
-  <script src="admin-products.js?v=8"></script>
-  <script src="admin-categories.js?v=8"></script>
-  <script src="admin-push.js?v=8"></script>
-  <script src="admin-settings.js?v=8"></script>
+  <script src="config.js?v=10"></script>
+  <script src="supa.js?v=10"></script>
+  <script src="data.js?v=10"></script>
+  <script src="admin.js?v=10"></script>
+  <script src="admin-home.js?v=10"></script>
+  <script src="admin-orders.js?v=10"></script>
+  <script src="admin-coupons.js?v=10"></script>
+  <script src="admin-products.js?v=10"></script>
+  <script src="admin-categories.js?v=10"></script>
+  <script src="admin-push.js?v=10"></script>
+  <script src="admin-settings.js?v=10"></script>
   <script>
     // الشريط تحت: كل زر بيفتح شاشته
     document.querySelector('.a-nav').addEventListener('click', e => {

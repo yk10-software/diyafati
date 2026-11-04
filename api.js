@@ -32,6 +32,7 @@ const API = (() => {
         method: 'POST',
         headers: { ...headers, 'Content-Type': 'application/json' },
         body: JSON.stringify(args),
+        signal: AbortSignal.timeout(20000),   // النت الضعيف: ما منعلّق الزبون للأبد
       }));
     },
   };

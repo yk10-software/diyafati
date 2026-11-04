@@ -3,12 +3,14 @@
 // بتبعت إشعار Web Push لكل موبايل مفعّل الإشعارات باللوحة.
 // مين بيستدعيها:
 //   1) زر «إشعار تجريبي» باللوحة: لازم يكون الحساب أدمن (منفحص is_admin).
-//   2) Database Webhook على كل طلب جديد: بيبعت الهيدر x-webhook-secret.
-// لازم تنعمل مع Verify JWT مطفي، لأن الـ webhook ما معه JWT، والفحص صاير هون.
+//   2) trigger عـ orders (net.http_post) على كل طلب جديد: بيبعت صف الطلب.
+//      ما في سر مشترك: منتأكد إنو الطلب موجود فعلاً بالقاعدة وانعمل هلق،
+//      ومنبني نص الإشعار من القاعدة، مو من اللي انبعت.
+// لازم تنعمل مع Verify JWT مطفي، لأن الـ trigger ما معه JWT، والفحص صاير هون.
 // ما في أي مكتبة خارجية: التشفير كله WebCrypto، حسب RFC 8291 و RFC 8292.
 //
 // الأسرار (Edge Functions ← Secrets)، وما بتنحط بالريبو أبداً:
-//   VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT, WEBHOOK_SECRET
+//   VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT
 // =========================================================
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL');
@@ -17,7 +19,6 @@ const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY');
 const VAPID_PUBLIC = Deno.env.get('VAPID_PUBLIC_KEY');
 const VAPID_PRIVATE = Deno.env.get('VAPID_PRIVATE_KEY');
 const VAPID_SUBJECT = Deno.env.get('VAPID_SUBJECT');
-const WEBHOOK_SECRET = Deno.env.get('WEBHOOK_SECRET');
 
 const enc = new TextEncoder();
 
@@ -132,12 +133,22 @@ async function isAdmin(req) {
   return res.ok && (await res.json()) === true;
 }
 
-function buildMessage(fromWebhook, body) {
-  if (!fromWebhook) {
-    return { title: 'إشعار تجريبي من ضيافتي', body: 'إذا شايف هالإشعار، الإشعارات شغّالة ✅', url: 'admin.html', tag: `test-${Date.now()}` };
-  }
-  const o = body.record;
-  if (body.type !== 'INSERT' || !o) return null;
+const TEST_MESSAGE = () => ({
+  title: 'إشعار تجريبي من ضيافتي', body: 'إذا شايف هالإشعار، الإشعارات شغّالة ✅',
+  url: 'admin.html', tag: `test-${Date.now()}`,
+});
+
+// منجيب الطلب من القاعدة: لازم يكون موجود وانعمل آخر 10 دقايق
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+async function orderMessage(id) {
+  if (!UUID.test(String(id))) return null;
+  const since = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/orders?id=eq.${id}&created_at=gte.${encodeURIComponent(since)}&select=code,customer_name,total`,
+    { headers: adminHeaders() });
+  if (!res.ok) throw new Error(`order_${res.status}`);
+  const [o] = await res.json();
+  if (!o) return null;
   return {
     title: `طلب جديد #${o.code}`,
     body: `${o.customer_name}، ${Number(o.total).toLocaleString('en-US')} ل.س`,
@@ -158,15 +169,20 @@ Deno.serve(async req => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'POST') return reply({ error: 'method_not_allowed' }, 405);
 
-  const secret = req.headers.get('x-webhook-secret');
-  const fromWebhook = !!WEBHOOK_SECRET && secret === WEBHOOK_SECRET;
-  if (!fromWebhook && !(await isAdmin(req))) return reply({ error: 'unauthorized' }, 401);
-
   if (!VAPID_PUBLIC || !VAPID_PRIVATE || !VAPID_SUBJECT) return reply({ error: 'missing_vapid_secrets' }, 500);
 
   const body = await req.json().catch(() => ({}));
-  const message = buildMessage(fromWebhook, body);
-  if (!message) return reply({ skipped: true });
+  // الـ trigger بيبعت صف الطلب نفسه، والـ webhook القديم كان يبعته جوّا record
+  const orderId = body?.record?.id ?? body?.id;
+
+  let message;
+  if (orderId) {
+    message = await orderMessage(orderId).catch(err => { console.error(err); return null; });
+    if (!message) return reply({ error: 'order_not_found' }, 404);
+  } else {
+    if (!(await isAdmin(req))) return reply({ error: 'unauthorized' }, 401);
+    message = TEST_MESSAGE();
+  }
 
   try {
     const subs = await loadSubscriptions();

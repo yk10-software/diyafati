@@ -1,6 +1,6 @@
 /* ضيافتي — بيخلّي التطبيق يفتح بسرعة وحتى لو النت ضعيف.
    كل ما تعدّل ملفات وترفعها، كبّر رقم النسخة هون، وكمان رقم ?v= بـ index.html و admin.html وبالقائمة تحت. */
-const CACHE = 'diyafati-v11';
+const CACHE = 'diyafati-v12';
 const SHELL = [
   './', 'index.html', 'admin.html', 'styles.css?v=10', 'data.js?v=10', 'app.js?v=10', 'admin.js?v=10',
   'reset.html', 'config.js?v=10', 'api.js?v=10', 'supa.js?v=10', 'reset.js?v=10',

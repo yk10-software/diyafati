@@ -1,0 +1,26 @@
+# بيبعت طلب قراءة بسيط لـ Supabase كل يوم، لأن المشروع المجاني بيتوقف إذا ضل أسبوع بلا نشاط.
+# المفتاح هو الـ publishable key، ومحفوظ بـ GitHub Secrets باسم SUPABASE_KEY.
+# ممنوع تحط هون service_role أو sb_secret_، لأن طلب القراءة ما بيحتاجهم.
+# انتبه: GitHub بيشغّل schedule من الفرع الافتراضي بس (main)، فهالملف لازم يوصل لـ main ليشتغل.
+name: Supabase keep-alive
+
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Read one row from settings
+        env:
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: |
+          curl --fail --silent --show-error --retry 3 --max-time 30 --output /dev/null \
+            --header "apikey: $SUPABASE_KEY" \
+            "https://quznimzbgfcrntyrpfim.supabase.co/rest/v1/settings?select=id&limit=1"

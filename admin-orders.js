@@ -224,7 +224,10 @@
     // الموبايل بيسكّر الاتصال بالخلفية، فلما ترجع عاللوحة منجيب آخر الطلبات
     document.addEventListener('visibilitychange', async () => {
       if (document.hidden || !A.user) return;
-      try { state.orders = await A.loadOrders(); refresh(); }
+      try {
+        [state.orders, state.reviewStamps] = await Promise.all([A.loadOrders(), A.loadReviewStamps()]);
+        refresh();
+      }
       catch (err) { console.warn(err); }
     });
   };

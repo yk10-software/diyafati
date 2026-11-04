@@ -499,6 +499,20 @@ body.in-panel .toast { bottom: calc(150px + var(--safe-b)); }
 .si-add { display: block; text-align: center; cursor: pointer; margin-bottom: 12px; }
 
 /* الرئيسية */
+.shop-card { padding: 0 14px; }
+.shop-card .open-row { padding: 12px 0; border-bottom: 1px solid var(--line); }
+.shop-card .open-row b { color: var(--done, #1B7A47); font-size: 17px; }
+.shop-card .srow { border-bottom: 0; }
+.shop-card.closed { background: #FBE9DC; border-color: #E7BFA5; }
+.shop-card.closed .open-row { border-color: #E7BFA5; }
+.shop-card.closed .open-row b { color: #B4561F; }
+.shop-card.closed .open-row span, .shop-card.closed .srow span { color: #7A5A44; }
+.h-links { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.h-link { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: inherit; text-decoration: none; }
+.h-link b { font-weight: 600; color: var(--cocoa); }
+.h-link span { font-size: 13px; color: var(--muted); white-space: nowrap; }
+.h-link i { font-style: normal; font-weight: 600; color: var(--cocoa); }
+.h-link.has-new i { color: #B4561F; }
 .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
 .stat { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
 .stat.hero { background: var(--cocoa); color: var(--butter); border-color: var(--cocoa); }

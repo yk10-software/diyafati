@@ -1,21 +1,32 @@
 /* =========================================================
    ضيافتي — لوحة التحكم: شاشة التقييمات
-   بتفتح من الإعدادات. كل تقييم بيوصل مخفي، وصاحب المحل بيختار شو بينعرض
+   بتفتح من الرئيسية. كل تقييم بيوصل مخفي، وصاحب المحل بيختار شو بينعرض
    بالموقع (is_public). التقييمات بتنحمّل كل ما تفتح الشاشة.
    ========================================================= */
 (() => {
   'use strict';
 
-  const { $, db, fail, toast } = A;
+  const { $, state, db, fail, toast } = A;
   const TZ = 'Asia/Damascus';
+  const SEEN_KEY = 'diyafati_reviews_seen';
   let reviews = [];
+
+  // آخر تقييم شافه صاحب المحل عهالموبايل، منه بيطلع رقم «جديد» بالرئيسية
+  A.reviewsSeenAt = () => {
+    try { return localStorage.getItem(SEEN_KEY); } catch (err) { return null; }
+  };
+  function markSeen() {
+    state.reviewStamps = reviews.map(r => ({ created_at: r.created_at }));
+    if (!reviews.length) return;
+    try { localStorage.setItem(SEEN_KEY, reviews[0].created_at); } catch (err) { console.warn(err); }
+  }
 
   const dateOf = iso => new Date(iso).toLocaleDateString('ar-SY-u-nu-latn', { day: 'numeric', month: 'long', timeZone: TZ });
   const stars = n => `<span class="stars-s" role="img" aria-label="${n} من 5">${'★'.repeat(n)}<i>${'★'.repeat(5 - n)}</i></span>`;
 
   A.views.reviews = {
     title: 'التقييمات',
-    parent: 'settings',
+    parent: 'home',
     sub() {
       const n = reviews.filter(r => r.is_public).length;
       return n ? `${A.countAr(n, 'تقييم', 'تقييمين', 'تقييمات')} بالموقع` : 'اختار شو بينعرض بالموقع';
@@ -30,6 +41,7 @@
       const rows = await db(sb.from('reviews').select('*, orders(code)').order('created_at', { ascending: false }).limit(200));
       if (A.current() !== 'reviews') return;   // راح على شاشة تانية وهو عم يحمّل
       reviews = rows;
+      markSeen();
       draw();
       A.refreshHead();
     } catch (err) {

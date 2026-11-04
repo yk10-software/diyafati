@@ -21,7 +21,7 @@ const A = (() => {
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 
   // كل بيانات المحل بعد التحميل
-  const state = { settings: null, cats: [], products: [], zones: [], accounts: [], coupons: [], stories: [], orders: [] };
+  const state = { settings: null, cats: [], products: [], zones: [], accounts: [], coupons: [], stories: [], reviewStamps: [], orders: [] };
   const views = {};          // كل ملف شاشة بيسجّل حاله هون
   let user = null;
   let liveStarted = false;   // الـ realtime للطلبات بيشتغل مرة وحدة
@@ -67,8 +67,11 @@ const A = (() => {
   // آخر 300 طلب مع أصنافها. شاشة الرئيسية كمان بتحسب منهن أرقامها
   const loadOrders = () => db(sb.from('orders').select('*, order_items(*)').order('created_at', { ascending: false }).limit(300));
 
+  // بس التواريخ، لرقم «جديد» بالرئيسية. التقييمات نفسها بتنحمّل بشاشتها
+  const loadReviewStamps = () => db(sb.from('reviews').select('created_at').order('created_at', { ascending: false }).limit(200));
+
   async function loadAll() {
-    const [settings, cats, products, zones, accounts, coupons, stories, orders] = await Promise.all([
+    const [settings, cats, products, zones, accounts, coupons, stories, reviewStamps, orders] = await Promise.all([
       db(sb.from('settings').select('*').eq('id', 1).single()),
       db(sb.from('categories').select('*').order('sort_order').order('id')),
       db(sb.from('products').select('*').order('id', { ascending: false })),
@@ -76,9 +79,10 @@ const A = (() => {
       db(sb.from('payment_accounts').select('*').order('sort_order').order('id')),
       db(sb.from('coupons').select('*').order('created_at', { ascending: false })),
       db(sb.from('stories').select('*, story_items(*)').order('sort_order').order('id')),
+      loadReviewStamps(),
       loadOrders(),
     ]);
-    Object.assign(state, { settings, cats, products, zones, accounts, coupons, stories, orders });
+    Object.assign(state, { settings, cats, products, zones, accounts, coupons, stories, reviewStamps, orders });
   }
 
   /* ---------- التنقل بين الشاشات (#home، #orders، #products، #categories، #settings، #coupons، #reviews، #help) ---------- */
@@ -423,7 +427,7 @@ const A = (() => {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(err => console.warn(err));
 
   const api = {
-    $, $$, state, views, icon, countAr, num, db, fail, toast, loadOrders,
+    $, $$, state, views, icon, countAr, num, db, fail, toast, loadOrders, loadReviewStamps,
     openSheet, closeSheet, confirmTwice, clearOnInput, requireFields, busy,
     resizeImage, uploadImage, removeImages, thumb, dayName, expiryOptions, endOfDay,
     render, refreshHead, openAccount, current,

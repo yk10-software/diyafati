@@ -1,6 +1,7 @@
 /* =========================================================
    ضيافتي — لوحة التحكم: شاشة الإعدادات
-   المحل مفتوح/مسكّر، أجور التوصيل، طرق الدفع والحسابات، إعدادات الطلبات والدوام، والحساب.
+   المساعدة، أجور التوصيل، طرق الدفع والحسابات، إعدادات الطلبات، وروابط التواصل، والإشعارات، والحساب.
+   فتح وسكر المحل والدوام والكوبونات والتقييمات بشاشة الرئيسية.
    ========================================================= */
 (() => {
   'use strict';
@@ -24,9 +25,11 @@
     const el = document.createElement('div');
     el.className = 'p-pad';
     el.innerHTML = `
-      <div class="a-card open-row">
-        <p><b>المحل مفتوح للطلبات</b><span>بتسكّره بكبسة إذا بدك توقف الطلبات</span></p>
-        <label class="switch"><input type="checkbox" id="sOpen" ${s.shop_open ? 'checked' : ''} aria-label="المحل مفتوح للطلبات"><span></span></label>
+      <div class="a-card">
+        <div class="srow">
+          <div class="lbl"><b>مساعدة</b><span>دليل اللوحة، خطوات قصيرة لكل شي</span></div>
+          <a class="link-btn" href="#help">فتح</a>
+        </div>
       </div>
 
       <div class="sec"><h2>أجور التوصيل</h2><small>${CONFIG.currency}</small></div>
@@ -69,10 +72,6 @@
           <button class="link-btn" type="button" data-set="whatsapp">تغيير</button>
         </div>
         <div class="srow">
-          <div class="lbl"><b>دوام المحل</b><span>${escapeHTML(hoursText(s.open_time || '09:00', s.close_time || '22:00'))} <small>(مواعيد التوصيل حسبه)</small></span></div>
-          <button class="link-btn" type="button" id="hoursBtn">تغيير</button>
-        </div>
-        <div class="srow">
           <div class="lbl"><b>أقل كمية للطلب</b><span>${formatQty(Number(s.min_kilo), 'كيلو')} <small>(للأصناف بالكيلو)</small></span></div>
           <button class="link-btn" type="button" data-set="min_kilo">تغيير</button>
         </div>
@@ -85,22 +84,6 @@
           <div class="lbl"><b>لحد كم يوم لقدام</b><span>${A.countAr(s.schedule_max_days, 'يوم', 'يومين', 'أيام')}</span></div>
           <button class="link-btn" type="button" data-set="schedule_max_days">تغيير</button>
         </div>` : ''}
-      </div>
-
-      <div class="sec"><h2>الكوبونات</h2></div>
-      <div class="a-card">
-        <div class="srow">
-          <div class="lbl"><b>أكواد الخصم</b><span>${state.coupons.length ? A.countAr(state.coupons.length, 'كوبون واحد', 'كوبونين', 'كوبونات') : 'لسا ما في كوبونات'}</span></div>
-          <a class="link-btn" href="#coupons">إدارة</a>
-        </div>
-      </div>
-
-      <div class="sec"><h2>التقييمات</h2></div>
-      <div class="a-card">
-        <div class="srow">
-          <div class="lbl"><b>تقييمات الزباين</b><span>اختار شو بينعرض بالموقع</span></div>
-          <a class="link-btn" href="#reviews">إدارة</a>
-        </div>
       </div>
 
       <div class="sec"><h2>روابط التواصل</h2></div>
@@ -122,10 +105,6 @@
       <div class="sec"><h2>الحساب</h2></div>
       <div class="a-card">
         <div class="srow">
-          <div class="lbl"><b>مساعدة</b><span>خطوات قصيرة لكل شي باللوحة</span></div>
-          <a class="link-btn" href="#help">فتح</a>
-        </div>
-        <div class="srow">
           <div class="lbl"><b>حسابي</b><span><bdi dir="ltr">${escapeHTML(A.user.email)}</bdi></span></div>
           <button class="link-btn" type="button" id="accBtn">كلمة السر والخروج</button>
         </div>
@@ -139,8 +118,6 @@
     A.push.render($('#pushBox', el));
 
     // المفاتيح (switches)
-    $('#sOpen', el).addEventListener('change', e => saveSettings({ shop_open: e.target.checked },
-      e.target.checked ? 'المحل مفتوح، الطلبات رجعت' : 'المحل مسكّر، ما رح توصل طلبات', e.target));
     $('#sCash', el).addEventListener('change', e => saveSettings({ cash_enabled: e.target.checked },
       e.target.checked ? 'الكاش رجع مفعّل' : 'الكاش موقّف', e.target));
     $('#sSched', el).addEventListener('change', e => saveSettings({ scheduled_enabled: e.target.checked },
@@ -163,52 +140,7 @@
     });
     $('#zAdd', el).addEventListener('click', () => openZone(null));
     $('#aAdd', el).addEventListener('click', () => openAccountSheet(null));
-    $('#hoursBtn', el).addEventListener('click', openHours);
     $('#accBtn', el).addEventListener('click', A.openAccount);
-  }
-
-  /* ---------- دوام المحل ---------- */
-  const short = t => String(t).slice(0, 5);
-  const clockOf = t => new Date(`2026-01-01T${short(t)}:00+03:00`)
-    .toLocaleTimeString('ar-SY-u-nu-latn', { hour: 'numeric', minute: '2-digit', timeZone: 'Asia/Damascus' });
-  const hoursText = (open, close) => `كل يوم من ${clockOf(open)} لـ ${clockOf(close)}`;
-
-  function hourOptions(selected) {
-    let out = '';
-    for (let m = 0; m < 24 * 60; m += 30) {
-      const t = String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
-      out += `<option value="${t}" ${t === short(selected) ? 'selected' : ''}>${clockOf(t)}</option>`;
-    }
-    return out;
-  }
-
-  function openHours() {
-    const s = state.settings;
-    const sheet = A.openSheet(`
-      <div class="sheet-head"><h2>دوام المحل</h2><button class="close" aria-label="إغلاق">×</button></div>
-      <form id="hForm" novalidate>
-        <div class="two">
-          <label class="field"><span>بيفتح</span><select name="open">${hourOptions(s.open_time || '09:00')}</select></label>
-          <label class="field" data-f="close"><span>بيسكّر</span><select name="close">${hourOptions(s.close_time || '22:00')}</select>
-            <span class="err">لازم يكون بعد الفتح.</span></label>
-        </div>
-        <p class="caption" style="margin-top:-6px">الزبون بيختار موعد التوصيل ضمن هالساعات بس، كل نص ساعة.</p>
-        <button class="btn" type="submit" style="margin-top:14px">حفظ</button>
-      </form>
-    `);
-    const form = $('#hForm', sheet);
-    const f = form.elements;
-    form.addEventListener('change', () => form.querySelector('[data-f="close"]').classList.remove('invalid'));
-    form.addEventListener('submit', async e => {
-      e.preventDefault();
-      if (f.close.value <= f.open.value) { form.querySelector('[data-f="close"]').classList.add('invalid'); return; }
-      A.busy(form, true);
-      const ok = await saveSettings({
-        open_time: f.open.value, close_time: f.close.value, hours_label: hoursText(f.open.value, f.close.value),
-      }, 'انحفظ الدوام');
-      A.busy(form, false);
-      if (ok) { A.closeSheet(); render(); }
-    });
   }
 
   /* ---------- حفظ الإعدادات ---------- */

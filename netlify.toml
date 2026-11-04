@@ -1,0 +1,35 @@
+# إعدادات موقع التجربة diyafati-dev على Netlify
+# موقع ثابت بلا build: الملفات بتنرفع متل ما هي من جذر الريبو.
+[build]
+  publish = "."
+
+# الـ service worker لازم ما ينحفظ بالكاش، وإلا التحديثات ما بتوصل للموبايلات
+[[headers]]
+  for = "/sw.js"
+  [headers.values]
+    Cache-Control = "no-cache"
+
+# ملفات الشغل ما إلها علاقة بالتطبيق، فما منقدّمها عالموقع
+[[redirects]]
+  from = "/CLAUDE.md"
+  to = "/not-found"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/README.md"
+  to = "/not-found"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/supabase/*"
+  to = "/not-found"
+  status = 404
+  force = true
+
+[[redirects]]
+  from = "/design/*"
+  to = "/not-found"
+  status = 404
+  force = true

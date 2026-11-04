@@ -1,0 +1,38 @@
+/* صفحة الإدخال: للكمبيوتر، والجدول بيتمرر لحاله */
+.imp { max-width: 1240px; margin: 0 auto; padding: 18px 16px 110px; }
+.imp-head { display: flex; align-items: center; justify-content: space-between; }
+.imp h1, .imp h2 { font-family: var(--f-display); font-weight: 500; color: var(--cocoa); }
+.imp h1 { margin: 0; font-size: 28px; }
+.imp h2 { margin: 26px 0 8px; font-size: 21px; }
+.imp-note, .imp-sum { color: var(--muted); }
+.imp form, #pick { max-width: 380px; }
+.imp-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.imp table { width: 100%; min-width: 1020px; border-collapse: collapse; font-size: 14px; }
+.imp th { padding: 8px; background: var(--butter-soft); color: var(--cocoa); font-weight: 600; text-align: start; white-space: nowrap; }
+.imp td { padding: 8px; border-top: 1px solid var(--line); vertical-align: top; }
+.imp input[type="text"], .imp textarea, .imp select { width: 100%; padding: 6px 8px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--ink); font: inherit; }
+.imp textarea { min-height: 62px; resize: vertical; line-height: 1.45; }
+.imp .num { width: 84px; }
+.imp tr.warn { background: #FFF6E8; }
+.imp tr.off { opacity: .45; }
+.imp tr.need .num.price { border-color: #B3261E; border-width: 2px; }
+.imp .flag { display: inline-block; margin: 0 0 3px 3px; padding: 2px 6px; border-radius: 6px; background: #FCE3C7; color: #7A3E00; font-size: 12px; }
+.imp .bad { color: #B3261E; font-size: 12px; font-weight: 600; }
+.imp .ok { color: #1B7A47; font-size: 12px; font-weight: 600; }
+.imp-pics { display: flex; flex-wrap: wrap; gap: 4px; width: 152px; }
+.imp-pic { position: relative; width: 48px; height: 58px; }
+.imp-pic img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px 10px 4px 4px; cursor: pointer; }
+.imp-pic:first-child img { box-shadow: 0 0 0 2px var(--cocoa); }
+.imp-pic button { position: absolute; top: -4px; left: -4px; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; background: var(--cocoa); color: var(--butter); font-size: 12px; line-height: 1; cursor: pointer; }
+.imp-add { display: grid; place-items: center; width: 48px; height: 58px; border: 1.5px dashed var(--line); border-radius: 10px 10px 4px 4px; color: var(--muted); cursor: pointer; }
+.imp .skip { padding: 4px 10px; border: 1px solid var(--cocoa); border-radius: 8px; background: none; color: var(--cocoa); cursor: pointer; white-space: nowrap; font: inherit; font-size: 13px; }
+.imp tr.off .skip { background: var(--cocoa); color: var(--butter); }
+.imp-demo { padding: 12px 14px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.imp-demo ul { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 2px 12px; margin: 8px 0 0; padding: 0; list-style: none; font-size: 14px; }
+.imp-demo li label { display: flex; align-items: center; gap: 6px; }
+.imp-demo .caption { margin-top: 8px; }
+.imp-bar { position: fixed; bottom: 0; inset-inline: 0; padding: 10px 16px; background: var(--sugar); border-top: 1px solid var(--line); }
+.imp-bar .btn { display: block; max-width: 420px; margin: 0 auto; }
+.imp-track { height: 12px; border-radius: 6px; background: var(--photo); overflow: hidden; }
+.imp-track i { display: block; width: 0; height: 100%; background: var(--foil); transition: width .2s; }
+#report { padding-inline-start: 20px; line-height: 1.8; }

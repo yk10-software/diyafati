@@ -68,6 +68,7 @@
       return `
         <div class="crow${c.id === fresh ? ' fresh' : ''}" data-id="${c.id}">
           <button class="grip" type="button" aria-label="رتّب «${escapeHTML(c.name)}» (اسحب أو استعمل الأسهم)">${icon('grip')}</button>
+          ${A.thumb(c.image, 'c-thumb')}
           <div class="nm">
             <b>${escapeHTML(c.name)}${tags}</b>
             <span>${n ? A.countAr(n, 'صنف', 'صنفين', 'أصناف') : 'قسم جديد، لسا ما فيه أصناف'}</span>
@@ -149,6 +150,8 @@
     const sheet = A.openSheet(`
       <div class="sheet-head"><h2>تعديل القسم</h2><button class="close" aria-label="إغلاق">×</button></div>
       <form id="cForm" novalidate>
+        <div class="field"><span>صورة القسم <small>(ماركة أو صنف)</small></span></div>
+        <div class="imgs" id="cImg"></div>
         <label class="field" data-f="cname">
           <span>اسم القسم</span>
           <input name="cname" value="${escapeHTML(c.name)}" maxlength="40">
@@ -162,20 +165,47 @@
     const form = $('#cForm', sheet);
     const f = form.elements;
     A.clearOnInput(form);
+
+    // الصورة: يا المحفوظة (رابط)، يا جديدة لسا ما ارتفعت، يا ما في
+    let image = c.image ? { url: c.image } : null;
+    function drawImage() {
+      $('#cImg', sheet).innerHTML = image
+        ? `<div class="img-slot"><img src="${escapeHTML(image.url || image.preview)}" alt=""><button type="button" data-rm aria-label="شيل الصورة">×</button></div>`
+        : `<label class="img-slot add-img"><input type="file" accept="image/*" hidden id="cFile"><span>+</span><small>صورة</small></label>`;
+    }
+    drawImage();
+    sheet.addEventListener('click', e => {
+      if (e.target.closest('[data-rm]')) { image = null; drawImage(); }
+    });
+    sheet.addEventListener('change', async e => {
+      if (e.target.id !== 'cFile' || !e.target.files[0]) return;
+      try {
+        const blob = await A.resizeImage(e.target.files[0]);
+        image = { blob, preview: URL.createObjectURL(blob) };
+        drawImage();
+      } catch (err) { toast('ما قدرنا نفتح الصورة. جرّب صورة تانية.'); }
+    });
+
     form.addEventListener('submit', async e => {
       e.preventDefault();
       if (!A.requireFields(form, ['cname'])) return;
       A.busy(form, true);
+      let uploaded = null;
       try {
+        if (image && image.blob) uploaded = await A.uploadImage(image.blob, 'categories');
+        const url = uploaded || (image ? image.url : null);
         const saved = await db(sb.from('categories')
-          .update({ name: f.cname.value.trim(), hidden: f.hide.checked, coming_soon: f.soon.checked })
+          .update({ name: f.cname.value.trim(), hidden: f.hide.checked, coming_soon: f.soon.checked, image: url })
           .eq('id', id).select().single());
         state.cats[state.cats.findIndex(x => x.id === id)] = saved;
+        if (c.image && c.image !== url) A.removeImages([c.image]);
         A.closeSheet();
         renderList();
         toast('انحفظ القسم');
-      } catch (err) { fail(err); }
-      finally { A.busy(form, false); }
+      } catch (err) {
+        if (uploaded) A.removeImages([uploaded]);
+        fail(err);
+      } finally { A.busy(form, false); }
     });
   }
 
@@ -195,6 +225,7 @@
       e.target.disabled = true;
       try {
         await db(sb.from('categories').delete().eq('id', id));
+        if (c.image) A.removeImages([c.image]);
         state.cats = state.cats.filter(x => x.id !== id);
         // قاعدة البيانات خلّت category_id فاضي، منعمل نفس الشي هون
         state.products.forEach(p => { if (p.category_id === id) p.category_id = null; });

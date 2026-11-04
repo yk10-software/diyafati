@@ -37,6 +37,7 @@ create table if not exists public.categories (
   sort_order  int     not null default 0,
   hidden      boolean not null default false,
   coming_soon boolean not null default false,            -- متل «أزهار، قريباً»
+  image       text,                                      -- صورة القسم، فاضي = بلا صورة
   created_at  timestamptz not null default now()
 );
 
@@ -53,6 +54,7 @@ create table if not exists public.products (
   unit              text    not null default 'كيلو'
                     check (unit in ('كيلو', 'قطعة', 'علبة', 'باقة')),
   images            text[]  not null default '{}',       -- روابط أو مسارات الصور
+  pieces_per_kg     int check (pieces_per_kg > 0),       -- عدد الحبات بالكيلو
   custom_note_label text,                                -- متل «شو بدك ينطبع على الملبس؟»
   available         boolean not null default true,       -- false = «خلص» بس بيبين
   hidden            boolean not null default false,      -- true = ما بيبين للزباين أبداً

@@ -161,6 +161,11 @@
             <select name="sale_until">${A.expiryOptions(p.sale_until)}</select>
           </label>
         </div>
+        <label class="field" data-f="pieces" id="piecesField" ${p.unit === 'كيلو' ? '' : 'hidden'}>
+          <span>عدد الحبات بالكيلو <small>(اختياري)</small></span>
+          <input name="pieces" type="text" inputmode="numeric" dir="ltr" autocomplete="off" value="${p.pieces_per_kg ?? ''}">
+          <span class="err">اكتب رقم صحيح أكبر من صفر.</span>
+        </label>
         <label class="field">
           <span>القسم</span>
           <select name="category_id">
@@ -201,6 +206,7 @@
 
     sheet.addEventListener('change', async e => {
       if (e.target.name === 'custom') { $('#noteField', sheet).hidden = !e.target.checked; return; }
+      if (e.target.name === 'unit') { $('#piecesField', sheet).hidden = e.target.value !== 'كيلو'; return; }
       if (e.target.id !== 'imgInput') return;
       for (const file of e.target.files) {
         try {
@@ -226,7 +232,11 @@
       const sale = A.num(f.sale.value);
       const badSale = sale !== null && !(Number.isInteger(sale) && sale > 0 && sale < price);
       form.querySelector('[data-f="sale"]').classList.toggle('invalid', badSale);
-      if (!name || !(price > 0) || badSale) return;
+      const kilo = f.unit.value === 'كيلو';
+      const pieces = kilo ? A.num(f.pieces.value) : null;
+      const badPieces = pieces !== null && !(Number.isInteger(pieces) && pieces > 0);
+      form.querySelector('[data-f="pieces"]').classList.toggle('invalid', badPieces);
+      if (!name || !(price > 0) || badSale || badPieces) return;
 
       A.busy(form, true);
       const uploaded = [];
@@ -243,6 +253,7 @@
           name,
           price: Math.round(price),
           sale_price: sale,
+          pieces_per_kg: pieces,
           sale_until: sale === null ? null : A.endOfDay(f.sale_until.value),
           unit: f.unit.value,
           category_id: f.category_id.value ? Number(f.category_id.value) : null,

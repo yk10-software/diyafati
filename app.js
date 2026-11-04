@@ -85,8 +85,8 @@
       // التقييمات شغلة إضافية: إذا فشلت، الكتالوج لازم يضل يفتح
       API.rpc('get_public_reviews', {}).catch(() => []),
       API.get('settings?select=*'),
-      API.get('categories?select=id,name,sort_order,coming_soon&order=sort_order,id'),
-      API.get('products?select=id,category_id,name,description,price,sale_price,sale_until,unit,images,custom_note_label,available,sort_order'),
+      API.get('categories?select=*&order=sort_order,id'),
+      API.get('products?select=*'),
       API.get('stories?select=id,title,story_items(id,image,product_id,sort_order)&order=sort_order,id&story_items.order=sort_order,id'),
       API.get('delivery_zones?select=id,name,fee,note&order=sort_order,id'),
       API.get('payment_accounts?select=id,kind,title,holder_name,account_number,note&order=sort_order,id'),
@@ -132,6 +132,13 @@
     const old = now !== p.price ? `<s>${formatPrice(p.price)}</s> ` : '';
     return `${old}${formatPrice(now)} <small>/ ${escapeHTML(p.unit)}</small>`;
   }
+  // عدد الحبات: بس للأصناف بالكيلو
+  function piecesLine(p) {
+    const n = p.pieces_per_kg;
+    if (p.unit !== 'كيلو' || !n) return '';
+    return `<p class="p-pieces">حوالي ${n} ${n >= 3 && n <= 10 ? 'حبات' : 'حبة'} بالكيلو</p>`;
+  }
+
   function countLabel(n) {
     if (n === 1) return 'صنف واحد';
     if (n === 2) return 'صنفين';
@@ -144,9 +151,14 @@
     // إذا القسم المختار انحذف من اللوحة، منرجع للكل
     if (activeCat !== 'all' && !findCat(activeCat)) activeCat = 'all';
     const all = { id: 'all', name: 'الكل' };
+    // القسم بصورته بقوس كبير، واللي ما إله صورة بياخد لوغو ضيافتي بنفس القوس
     $('#chips').innerHTML = [all, ...categories].map(c => `
-      <button class="chip" data-cat="${c.id}" aria-pressed="${c.id === activeCat}">
-        ${escapeHTML(c.name)}${c.coming_soon ? '<small>قريباً</small>' : ''}
+      <button class="cat" data-cat="${c.id}" aria-pressed="${c.id === activeCat}">
+        <span class="arch${c.image ? '' : ' plain'}">
+          <img src="${c.image ? escapeHTML(c.image) : 'img/logo-mark.png'}" alt="" loading="lazy">
+          ${c.coming_soon ? '<small>قريباً</small>' : ''}
+        </span>
+        <span class="nm">${escapeHTML(c.name)}</span>
       </button>`).join('');
   }
 
@@ -350,6 +362,7 @@
       ${imgs.length > 1 ? `<div class="dots">${imgs.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div>` : ''}
       <h2 class="p-name">${escapeHTML(p.name)}</h2>
       <p class="price">${priceHTML(p)}</p>
+      ${piecesLine(p)}
       ${p.description ? `<p class="p-desc">${escapeHTML(p.description)}</p>` : ''}
       ${ok && p.custom_note_label ? `
         <label class="field" style="margin-top:18px">

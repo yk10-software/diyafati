@@ -14,6 +14,7 @@
 | `08_notify_trigger.sql` | trigger اسمه `notify_new_order` بيستدعي `notify-order` مع كل طلب جديد عن طريق `net.http_post` |
 | `09_shop_hours.sql` | ساعة الفتح والسكر، ومنهم بتطلع مواعيد التوصيل (بعده لازم تعيد تشغيل `03_functions.sql`) |
 | `10_notified_at.sql` | عمود `notified_at`، لحتى يوصل إشعار واحد لكل طلب (لازم قبل رفع الدالة الجديدة) |
+| `11_public_reviews.sql` | التقييمات بالموقع بالاسم الأول وأول حرف من الكنية، ومنع قراءة جدول `reviews` مباشرة |
 | `12_social_links.sql` | روابط انستغرام وفيسبوك بأسفل الموقع، وبتنعدّل من الإعدادات |
 
 كل الملفات آمنة لو انشغّلت مرتين.
@@ -65,8 +66,8 @@ select created, status_code, content, error_msg from net._http_response order by
 - **GitHub بيوقّف الجدولة** بالريبو العام إذا ضل 60 يوم بلا أي نشاط، وبيبعت إيميل. وقتها بينكبس **Enable workflow** من تبويب Actions.
 
 ## Security Advisor: التحذيرات اللي بتضل (متوقعة)
-بعد `07_hardening.sql` بيضل 13 تحذير (و 0 أخطاء)، وكلهن مقصودين:
-- **SECURITY DEFINER** على `place_order` و `get_order` و `get_orders` و `check_coupon` و `submit_review` و `is_admin`.
+بعد `07_hardening.sql` بيضل 13 تحذير (و 0 أخطاء)، وبعد `11_public_reviews.sql` ممكن يصيروا 14 بسبب `get_public_reviews`، وكلهن مقصودين:
+- **SECURITY DEFINER** على `place_order` و `get_order` و `get_orders` و `check_coupon` و `submit_review` و `get_public_reviews` و `is_admin`.
   هاد هو التصميم: الزبون ما إله صلاحية عالجداول، وهالدوال هي الباب الوحيد، وكل وحدة بتفحص مدخلاتها (التوكن، الأسعار، الكوبون...).
 - **Leaked Password Protection**: ميزة بالباقة المدفوعة بس. بدالها: كلمة سر صاحب المحل قوية (12 حرف وأكتر).
 

@@ -83,7 +83,7 @@
   async function fetchCatalog() {
     const [revs, settingsRows, cats, prods, strs, zs, accs] = await Promise.all([
       // التقييمات شغلة إضافية: إذا فشلت، الكتالوج لازم يضل يفتح
-      API.get('reviews?select=id,name,rating,comment&is_public=eq.true&order=created_at.desc&limit=12').catch(() => []),
+      API.rpc('get_public_reviews', {}).catch(() => []),
       API.get('settings?select=*'),
       API.get('categories?select=id,name,sort_order,coming_soon&order=sort_order,id'),
       API.get('products?select=id,category_id,name,description,price,sale_price,sale_until,unit,images,custom_note_label,available,sort_order'),
@@ -195,22 +195,14 @@
     return `<span class="stars-s" role="img" aria-label="${n} من 5">${'★'.repeat(n)}<i>${'★'.repeat(5 - n)}</i></span>`;
   }
 
-  // الاسم بالموقع: الاسم الأول وأول حرف من الكنية (سارة محمد ← سارة م.)
-  function shortName(name) {
-    const parts = String(name).trim().split(/\s+/).filter(Boolean);
-    if (parts.length < 2) return parts[0] || '';
-    const last = parts[parts.length - 1].replace(/^ال(?=.{2})/, '');   // الحلبي ← ح.
-    return `${parts[0]} ${[...last][0]}.`;
-  }
-
-  // آراء الزباين: بس اللي اختارها صاحب المحل
+  // آراء الزباين: بس اللي اختارها صاحب المحل. الاسم بيوصل مختصر من السيرفر (سارة م.)
   function renderReviews() {
     $('#reviews').hidden = !reviews.length;
     $('#rvList').innerHTML = reviews.map(r => `
       <figure class="rv">
         ${starsText(r.rating)}
         ${r.comment ? `<blockquote>${escapeHTML(r.comment)}</blockquote>` : ''}
-        <figcaption>${escapeHTML(shortName(r.name))}</figcaption>
+        <figcaption>${escapeHTML(r.name)}</figcaption>
       </figure>`).join('');
   }
 
@@ -809,7 +801,8 @@
               </div>` : ''}
           </div>`).join('') : `<div class="empty"><b>ما في طريقة دفع متاحة هلق</b>راسلنا عالواتس لنكمّل طلبك.</div>`}
         <p class="form-msg" id="payMsg" role="alert"></p>
-        ${methods.length ? `<button class="btn whats" id="sendOrder">${ICON.whats} أرسل الطلب عبر واتساب</button>` : ''}
+        ${methods.length ? `<button class="btn whats" id="sendOrder">${ICON.whats} أرسل الطلب عبر واتساب</button>
+        <p class="hint">بإرسال الطلب بتوافق على <a href="privacy.html" target="_blank" rel="noopener">سياسة الخصوصية</a></p>` : ''}
         <button class="link-btn gate-link" id="backDetails">رجوع للتفاصيل</button>`;
     }
     render();

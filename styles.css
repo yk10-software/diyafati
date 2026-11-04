@@ -419,6 +419,24 @@ body.in-panel .toast { bottom: calc(150px + var(--safe-b)); }
 .a-nav [aria-current="page"] { color: var(--cocoa); font-weight: 600; }
 .a-nav [aria-current="page"]::before { content: ''; position: absolute; top: -9px; width: 28px; height: 3px; border-radius: 2px; background: var(--cocoa); }
 
+/* سياسة الخصوصية */
+.legal { padding: 8px 20px 32px; line-height: 1.7; }
+.legal h1 { margin: 12px 0 4px; font-family: var(--f-display); font-weight: 500; font-size: 28px; color: var(--cocoa); }
+.legal .muted-line { margin: 0 0 8px; }
+.legal h2 { margin: 20px 0 4px; font-family: var(--f-display); font-weight: 500; font-size: 19px; color: var(--cocoa); }
+.legal p { margin: 0; }
+.legal .btn.whats { margin-top: 18px; }
+
+/* المساعدة */
+.h-topic { margin-bottom: 10px; background: #fff; border: 1px solid var(--line); border-radius: 14px; }
+.h-topic summary { padding: 13px 14px; font-weight: 600; color: var(--cocoa); cursor: pointer; }
+.h-topic[open] summary { border-bottom: 1px solid var(--line); }
+.h-topic h3 { margin: 12px 14px 0; font-size: 15px; font-weight: 600; color: var(--cocoa); }
+.h-topic ol { margin: 10px 0; padding: 0 34px 0 14px; line-height: 1.65; font-size: 15px; }
+.h-topic li { margin-bottom: 6px; }
+.h-topic b { font-weight: 600; }
+.h-topic img { display: block; width: min(250px, 80%); height: auto; margin: 4px auto 14px; border: 1px solid var(--line); border-radius: 14px; }
+
 /* النجوم */
 .stars-s { color: var(--foil); letter-spacing: 1px; font-size: 15px; white-space: nowrap; }
 .stars-s i { color: var(--line); font-style: normal; }

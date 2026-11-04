@@ -122,6 +122,10 @@
       <div class="sec"><h2>الحساب</h2></div>
       <div class="a-card">
         <div class="srow">
+          <div class="lbl"><b>مساعدة</b><span>خطوات قصيرة لكل شي باللوحة</span></div>
+          <a class="link-btn" href="#help">فتح</a>
+        </div>
+        <div class="srow">
           <div class="lbl"><b>حسابي</b><span><bdi dir="ltr">${escapeHTML(A.user.email)}</bdi></span></div>
           <button class="link-btn" type="button" id="accBtn">كلمة السر والخروج</button>
         </div>

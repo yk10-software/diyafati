@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>سياسة الخصوصية · ضيافتي</title>
+  <meta name="description" content="شو منجمع من معلوماتك بضيافتي، وليش، ومين بيشوفها، وكيف بتطلب حذفها.">
+  <meta name="theme-color" content="#F9F7A4">
+  <link rel="icon" type="image/png" href="icons/favicon-64.png">
+  <link rel="stylesheet" href="styles.css?v=14">
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <a class="brand" href="./" aria-label="رجوع للموقع">
+        <img class="mark" src="img/logo-mark.png" alt="" width="38" height="40">
+        <img class="word" src="img/logo-word.png" alt="ضيافتي" width="97" height="26">
+      </a>
+    </header>
+
+    <main class="legal">
+      <h1>سياسة الخصوصية</h1>
+      <p class="muted-line">آخر تحديث: تشرين الثاني 2026</p>
+
+      <h2>شو منجمع</h2>
+      <p>لما تطلب: اسمك، ورقم موبايلك، وعنوانك، وتفاصيل طلبك (الأصناف، والموعد، وملاحظاتك، وطريقة الدفع). وإذا قيّمت طلبك: النجوم والتعليق.</p>
+
+      <h2>ليش</h2>
+      <p>لنوصّلك طلبك، ولنتواصل معك بخصوصه.</p>
+
+      <h2>وين بينحفظ</h2>
+      <p>طلبك بينحفظ بقاعدة بيانات على خدمة Supabase. ولما تكبس «أرسل الطلب عبر واتساب»، بتنبعت نفس التفاصيل برسالة من واتسابك لواتساب المحل، يعني بتمر عن طريق واتساب كمان.</p>
+
+      <h2>مين بيشوفه</h2>
+      <p>المحل، لحتى يجهّز طلبك ويوصّله. وفريق YK10 اللي بنى الموقع عنده وصول لقاعدة البيانات، لصيانة الموقع.</p>
+
+      <h2>شو بيضل على موبايلك</h2>
+      <p>«طلباتي» محفوظة على موبايلك، ومعها اسمك ورقمك وعنوانك لحتى ما تعيد كتابتهم بكل طلب. إذا مسحت بيانات المتصفح بينمسحوا من موبايلك، بس طلباتك بتضل عند المحل.</p>
+
+      <h2>التقييم</h2>
+      <p>تقييمك بينعرض بالموقع بس إذا اختاره المحل، مع تعليقك، وباسمك الأول وأول حرف من كنيتك.</p>
+
+      <h2>كيف بتطلب حذف معلوماتك</h2>
+      <p>طلباتك بتضل محفوظة لحد ما تنحذف، وما في مدة بتنحذف بعدها لحالها. إذا بدك نحذفها، راسلنا عالواتس بالرقم اللي طلبت منه، ومنحذف طلباتك وتقييمك من قاعدة البيانات. رسائل الواتس شي منفصل عن قاعدة البيانات، فاذكرها برسالتك إذا بدك نحذفها كمان.</p>
+
+      <a class="btn whats" id="privacyWa" href="#" target="_blank" rel="noopener">راسلنا عالواتس</a>
+      <a class="btn ghost as-link" href="./" style="margin-top:10px">رجوع للموقع</a>
+    </main>
+  </div>
+
+  <script src="config.js?v=14"></script>
+  <script src="data.js?v=14"></script>
+  <script src="api.js?v=14"></script>
+  <script>
+    // رقم الواتس من إعدادات المحل، وإذا ما في نت من الرقم الافتراضي
+    (async () => {
+      const link = document.getElementById('privacyWa');
+      const show = number => { link.href = `https://wa.me/${number}?text=${encodeURIComponent('سلام، بدي احذف معلوماتي من ضيافتي')}`; };
+      show(CONFIG.whatsapp);
+      try {
+        const [s] = await API.get('settings?select=whatsapp');
+        if (s && s.whatsapp) show(s.whatsapp);
+      } catch (err) { console.warn(err); }
+    })();
+  </script>
+</body>
+</html>

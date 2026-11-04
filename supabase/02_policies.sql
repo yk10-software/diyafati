@@ -41,7 +41,7 @@ alter table public.push_subscriptions enable row level security;
 revoke all on all tables in schema public from anon;
 grant select on public.settings, public.categories, public.products,
                 public.stories, public.story_items, public.delivery_zones,
-                public.payment_accounts, public.reviews
+                public.payment_accounts
   to anon;
 
 -- authenticated عنده كل الصلاحيات، بس الـ RLS تحت بيحصرها بالأدمن.
@@ -142,10 +142,8 @@ drop policy if exists "order_items: admin all" on public.order_items;
 create policy "order_items: admin all" on public.order_items
   for all to authenticated using (public.is_admin()) with check (public.is_admin());
 
--- reviews: الزباين بيشوفوا اللي اختارها صاحب المحل بس
+-- reviews: الأدمن بس. الزباين بيشوفوا المعروض عن طريق get_public_reviews (ملف 11)
 drop policy if exists "reviews: public read" on public.reviews;
-create policy "reviews: public read" on public.reviews
-  for select to anon, authenticated using (is_public);
 
 drop policy if exists "reviews: admin all" on public.reviews;
 create policy "reviews: admin all" on public.reviews

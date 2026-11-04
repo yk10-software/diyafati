@@ -146,10 +146,22 @@
       </div>
 
       ${next ? `<button class="btn" id="oNext" style="margin-top:14px">${next.text}</button>` : ''}
-      ${next ? '<button class="btn danger" id="oCancel" style="margin-top:10px">إلغاء الطلب</button>' : ''}
+      ${next ? '<button class="btn danger" id="oCancel" style="margin-top:10px">إلغاء الطلب</button>' : '<button class="btn danger" id="oDelete" style="margin-top:14px">حذف الطلب نهائياً</button>'}
     `);
 
-    if (!next) return;
+    // إذا الزبون طلب حذف معلوماته (سياسة الخصوصية). الأصناف والتقييم بينحذفوا معه
+    if (!next) {
+      A.confirmTwice($('#oDelete', sheet), 'اضغط مرة تانية، الحذف ما بيرجع', async () => {
+        try {
+          await db(sb.from('orders').delete().eq('id', o.id));
+          state.orders = state.orders.filter(x => x.id !== o.id);
+          A.closeSheet();
+          toast('انحذف الطلب');
+          refresh();
+        } catch (err) { fail(err); }
+      });
+      return;
+    }
     $('#oNext', sheet).addEventListener('click', e => { e.target.disabled = true; setStatus(o, next.to); });
     A.confirmTwice($('#oCancel', sheet), 'اضغط مرة تانية لتأكيد الإلغاء', () => setStatus(o, 'cancelled'));
   }

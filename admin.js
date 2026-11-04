@@ -10,6 +10,7 @@
      admin-categories.js الأقسام
      admin-stories.js    القصص (تحت الأقسام)
      admin-reviews.js    التقييمات
+     admin-help.js       المساعدة
      admin-settings.js   الإعدادات (التوصيل، الدفع، الطلبات)
    الملفات بتتشارك بالكائن `A`.
    ========================================================= */
@@ -80,7 +81,7 @@ const A = (() => {
     Object.assign(state, { settings, cats, products, zones, accounts, coupons, stories, orders });
   }
 
-  /* ---------- التنقل بين الشاشات (#home، #orders، #products، #categories، #settings، #coupons، #reviews) ---------- */
+  /* ---------- التنقل بين الشاشات (#home، #orders، #products، #categories، #settings، #coupons، #reviews، #help) ---------- */
   function current() {
     const name = location.hash.slice(1);
     return views[name] ? name : 'home';

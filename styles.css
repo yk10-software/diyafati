@@ -165,8 +165,22 @@ button { cursor: pointer; }
 .footer p { margin: 6px 0; }
 .socials { display: flex; justify-content: center; gap: 10px; }
 .socials .icon-btn { text-decoration: none; }
-/* هوية YK10: الاستثناء الوحيد عن ألوان ضيافتي */
-.footer .yk-badge { display: inline-block; margin-top: 16px; padding: 5px 12px; border-radius: 8px; background: #080808; color: #D4AF37; font-size: 12px; text-decoration: none; }
+/* فوتر YK10 بهوية YK10: الاستثناء الوحيد عن ألوان ضيافتي.
+   الموقع بينتهي فيه، فمساحة شريط السلة بتنزل لتحته بدل ما تضل بعمود التطبيق */
+.app.store { padding-bottom: 28px; }
+.yk-foot { padding: 56px 0 calc(40px + var(--safe-b)); background: #0A0A0A; color: #9A9A9A; text-align: center; }
+body:has(#cartBar:not([hidden])) .yk-foot { padding-bottom: calc(40px + 70px + var(--safe-b)); }
+.yk-foot p { margin: 0; }
+.yk-by { color: rgba(255, 255, 255, .6); font-size: .95rem; }
+.yk-logo { display: inline-block; margin-top: 12px; text-decoration: none; font-family: system-ui, "Segoe UI", sans-serif; }
+.yk-name { display: block; direction: ltr; font-family: system-ui, "Segoe UI", sans-serif; font-weight: 900; font-size: 3.4rem; line-height: 1.1; background: linear-gradient(90deg, #D4A82C, #F5DE96); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.yk-soft { display: block; margin-top: 6px; direction: ltr; font-weight: 700; font-size: 1.1rem; color: #D9AE38; letter-spacing: .06em; }
+.yk-social { display: flex; justify-content: center; gap: 16px; margin-top: 30px; }
+.yk-social a { display: grid; place-items: center; width: 52px; height: 52px; border-radius: 50%; background: #1C1C1C; color: #9A9A9A; transition: background .15s, color .15s; }
+.yk-social a:hover, .yk-social a:focus-visible { background: #2A2A2A; color: #F5DE96; }
+.yk-social svg { width: 26px; height: 26px; }
+.yk-foot :focus-visible { outline-color: #F5DE96; }
+.yk-copy { margin-top: 26px !important; font-size: .95rem; }
 .link-url { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
 
 /* ---------- شريط السلة ---------- */

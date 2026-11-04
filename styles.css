@@ -148,6 +148,12 @@ button { cursor: pointer; }
   box-shadow: 0 2px 6px rgba(58, 38, 20, .18);
 }
 .add svg { width: 20px; height: 20px; }
+/* الصنف اللي ما إله صورة، و«خلص»، والسعر القديم */
+.card .photo .ph { width: 100%; height: 100%; border-radius: 0; }
+.card .photo .ph img { width: 34%; height: auto; object-fit: contain; }
+.card.off .photo > img { filter: grayscale(1); opacity: .5; }
+.card .out { position: absolute; top: 10px; right: 10px; font-size: 12px; font-weight: 600; color: #B4561F; background: #FBE9DC; border-radius: 8px; padding: 2px 8px; }
+.price s { color: var(--muted); font-weight: 400; font-size: 13px; }
 
 .empty { padding: 40px 24px; text-align: center; color: var(--muted); }
 .empty b { display: block; color: var(--cocoa); font-family: var(--f-display); font-weight: 500; font-size: 20px; margin-bottom: 4px; }
@@ -217,6 +223,8 @@ button { cursor: pointer; }
 .gallery { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; border-radius: var(--arch); background: var(--photo); scrollbar-width: none; margin: 0 auto; max-width: 380px; aspect-ratio: 4 / 5; max-height: 44dvh; }
 .gallery::-webkit-scrollbar { display: none; }
 .gallery img { flex: 0 0 100%; width: 100%; height: 100%; object-fit: cover; scroll-snap-align: center; }
+.gallery .ph { flex: 0 0 100%; width: 100%; height: 100%; border-radius: 0; }
+.gallery .ph img { flex: none; width: 28%; height: auto; object-fit: contain; }
 .dots { display: flex; justify-content: center; gap: 6px; margin-top: 10px; }
 .dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
 .dots i.on { background: var(--cocoa); }
@@ -267,6 +275,9 @@ button { cursor: pointer; }
 /* السلة */
 .c-item { display: grid; grid-template-columns: 58px 1fr auto; gap: 12px; align-items: start; padding: 12px 0; border-bottom: 1px solid var(--line); }
 .c-item img { width: 58px; height: 72px; object-fit: cover; border-radius: var(--arch); background: var(--photo); }
+.c-item .ph { width: 58px; height: 72px; }
+.c-item .ph img { width: 28px; height: auto; border-radius: 0; background: none; object-fit: contain; }
+.c-item .ph small { display: none; }
 .c-item h4 { margin: 0; font-family: var(--f-display); font-weight: 500; font-size: 16px; color: var(--cocoa); line-height: 1.35; }
 .c-item .note { margin: 2px 0 0; font-size: 13px; color: var(--muted); }
 .c-item .ctrl { display: flex; align-items: center; gap: 12px; margin-top: 8px; flex-wrap: wrap; }
@@ -414,7 +425,8 @@ body.in-panel .toast { bottom: calc(150px + var(--safe-b)); }
 .tag { font-family: var(--f-body); font-size: 11px; font-weight: 600; color: #B4561F; background: #FBE9DC; border-radius: 8px; padding: 1px 7px; margin-inline-start: 6px; vertical-align: 2px; }
 .tag.muted { color: var(--muted); background: var(--photo); }
 /* الصنف اللي ما إله صورة: قوس زبدي ولوغو ضيافتي */
-.ph { display: grid; place-items: center; background: var(--butter); border-radius: var(--arch); }
+.ph { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; background: var(--butter); border-radius: var(--arch); }
+.ph small { font-family: var(--f-display); font-weight: 500; color: var(--cocoa); font-size: 14px; line-height: 1.3; text-align: center; padding: 0 12px; }
 .a-row .ph { width: 56px; height: 70px; }
 .a-row .ph img { width: 30px; height: auto; border-radius: 0; background: none; object-fit: contain; }
 .a-row.off .ph { opacity: .5; }
@@ -456,7 +468,7 @@ body.in-panel .toast { bottom: calc(150px + var(--safe-b)); }
 .caption { margin: 6px 2px 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
 
 /* النسخة التجريبية */
-.demo-strip {
+.demo-strip, .notice-strip {
   background: var(--cocoa); color: var(--butter);
   text-align: center; font-size: 14px; font-weight: 500;
   padding: 8px 16px; padding-top: max(8px, env(safe-area-inset-top));

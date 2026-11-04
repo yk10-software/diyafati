@@ -1,126 +1,15 @@
 /* =========================================================
-   ضيافتي — بيانات التطبيق
-   كل شي بيخص المحل (الرقم، الأقسام، الأصناف، القصص) موجود هون.
+   ضيافتي — إعدادات وأدوات مشتركة
+   الأقسام والأصناف والقصص والإعدادات صارت كلها بـ Supabase،
+   وبتتعدّل من لوحة التحكم. هون بس الأشياء الثابتة والأدوات اللي
+   بتستعملها واجهة الزبون واللوحة سوا.
    ========================================================= */
 
 const CONFIG = {
   shopName: 'ضيافتي',
-  // رقم واتساب المحل اللي بتوصل عليه الطلبات (بدون + وبدون أصفار بالبداية)
-  whatsapp: '963953334642',
   currency: 'ل.س',
-  // خلّيها true بالنسخة التجريبية، ورجعها false بالنسخة الحقيقية
-  demo: false,
-  // آخر يوم للنسخة التجريبية، بعده بيوقف التطبيق وبتطلع رسالة التفعيل
-  demoUntil: '2026-11-02T23:59:59+03:00',
-  // رابط واتساب YK10 Software للتفعيل
-  activateLink: 'https://wa.me/message/6LHRU6HTBT2EO1',
-};
-
-const CATEGORIES = [
-  { id: 'all',      name: 'الكل' },
-  { id: 'mawaleed', name: 'ضيافة مواليد' },
-  { id: 'choco',    name: 'شوكولا' },
-  { id: 'mlabbas',  name: 'ملبس' },
-  { id: 'flowers',  name: 'أزهار', soon: true },
-];
-
-const DEFAULT_PRODUCTS = [
-  {
-    id: 'harisa-boy',
-    name: 'هريسة لوز بيبي صبي',
-    cat: 'mawaleed',
-    price: 2000,
-    unit: 'كيلو',
-    images: ['img/harisa-boy.jpg'],
-    desc: 'قطع هريسة لوز بشكل سيارة، كل قطعة مغلفة لحالها. لضيافة المواليد.',
-    available: true,
-  },
-  {
-    id: 'harisa-girl',
-    name: 'هريسة لوز بيبي بنت',
-    cat: 'mawaleed',
-    price: 2000,
-    unit: 'كيلو',
-    images: ['img/harisa-girl.jpg'],
-    desc: 'قطع هريسة لوز بشكل رضّاعة، كل قطعة مغلفة لحالها. لضيافة المواليد.',
-    available: true,
-  },
-  {
-    id: 'choco-mix',
-    name: 'شوكولا ضيافتي ميكس',
-    cat: 'choco',
-    price: 2600,
-    unit: 'كيلو',
-    images: ['img/choco-mix.jpg'],
-    desc: 'شوكولا ميكس لوز وبندق، بتغليف ذهبي باسم ضيافتي.',
-    available: true,
-  },
-  {
-    id: 'choco-lotus',
-    name: 'شوكولا ضيافتي ويفر باللوتس',
-    cat: 'choco',
-    price: 2500,
-    unit: 'كيلو',
-    images: ['img/choco-lotus.jpg'],
-    desc: 'شوكولا محشية ويفر بكريمة اللوتس.',
-    available: true,
-  },
-  {
-    id: 'mlabbas-print',
-    name: 'ملبس مطبوع خاص',
-    cat: 'mlabbas',
-    price: 3000,
-    unit: 'كيلو',
-    images: ['img/mlabbas-1.jpg', 'img/mlabbas-2.jpg'],
-    desc: 'ملبس بينطبع عليه الاسم أو اللوغو اللي بدك ياه لمناسبتك.',
-    customNote: 'شو بدك ينطبع على الملبس؟ (اسم، تاريخ، لوغو...)',
-    available: true,
-  },
-];
-
-// القصص: صور من شغل المحل بالمناسبات، وكل صورة ممكن تفتح الصنف تبعها
-const STORIES = [
-  { id: 's-mawaleed', title: 'مواليد', items: [
-    { img: 'img/harisa-boy.jpg',  product: 'harisa-boy' },
-    { img: 'img/harisa-girl.jpg', product: 'harisa-girl' },
-  ]},
-  { id: 's-choco', title: 'شوكولا', items: [
-    { img: 'img/choco-mix.jpg',   product: 'choco-mix' },
-    { img: 'img/choco-lotus.jpg', product: 'choco-lotus' },
-  ]},
-  { id: 's-mlabbas', title: 'ملبس مطبوع', items: [
-    { img: 'img/mlabbas-1.jpg', product: 'mlabbas-print' },
-    { img: 'img/mlabbas-2.jpg', product: 'mlabbas-print' },
-  ]},
-];
-
-/* ---------------------------------------------------------
-   طبقة الحفظ
-   بالنسخة التجريبية: الأصناف بتنحفظ بذاكرة المتصفح (على نفس الجهاز).
-   بالنسخة الحقيقية: بتستبدل هالدوال بطلبات لـ Supabase،
-   وبيصير التعديل من اللوحة يوصل لكل الزباين.
-   --------------------------------------------------------- */
-const PRODUCTS_KEY = 'diyafati_products_v1';
-
-const Store = {
-  load() {
-    try {
-      const saved = localStorage.getItem(PRODUCTS_KEY);
-      if (saved) return JSON.parse(saved);
-    } catch (e) { /* ذاكرة المتصفح مو متاحة */ }
-    return JSON.parse(JSON.stringify(DEFAULT_PRODUCTS));
-  },
-  save(list) {
-    try {
-      localStorage.setItem(PRODUCTS_KEY, JSON.stringify(list));
-      return true;
-    } catch (e) {
-      return false;
-    }
-  },
-  reset() {
-    try { localStorage.removeItem(PRODUCTS_KEY); } catch (e) {}
-  },
+  // رقم احتياطي إذا ما قدرنا نجيب الإعدادات من Supabase. الرقم الحقيقي بيتعدّل من اللوحة.
+  whatsapp: '963953334642',
 };
 
 /* أدوات مشتركة */
@@ -158,36 +47,8 @@ function normalizeAr(s) {
     .trim();
 }
 
-/* النسخة التجريبية: الشريط وتاريخ الانتهاء */
-function demoExpired() {
-  // للمعاينة: افتح الرابط مع ?preview=expired لتشوف شاشة الانتهاء قبل وقتها
-  try { if (new URLSearchParams(location.search).get('preview') === 'expired') return true; } catch (e) {}
-  return CONFIG.demo && CONFIG.demoUntil && Date.now() > new Date(CONFIG.demoUntil).getTime();
-}
-
-function demoEndLabel() {
-  return new Date(CONFIG.demoUntil).toLocaleDateString('ar-SY-u-nu-latn', {
-    weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Asia/Damascus',
-  });
-}
-
-function addDemoStrip() {
-  if (!CONFIG.demo) return;
-  const app = document.querySelector('.app');
-  const strip = document.createElement('div');
-  strip.className = 'demo-strip';
-  strip.textContent = 'نسخة تجريبية، بتنتهي ' + demoEndLabel();
-  app.prepend(strip);
-}
-
-function showDemoExpired() {
-  document.querySelectorAll('.cartbar, .overlay, .story-view').forEach(el => el.remove());
-  document.body.style.overflow = '';
-  document.querySelector('.app').innerHTML = `
-    <div class="expired">
-      <img src="img/logo-full.png" alt="ضيافتي" width="100" height="120">
-      <h1>انتهت الفترة التجريبية</h1>
-      <p>لتفعيل تطبيق ضيافتي، تواصل مع <bdi>YK10 Software</bdi></p>
-      <a class="btn" href="${CONFIG.activateLink}" target="_blank" rel="noopener">تواصل لتفعيل التطبيق</a>
-    </div>`;
+// سعر الصنف بعد الخصم إذا في خصم شغّال (نفس الحساب اللي بـ place_order)
+function effectivePrice(p) {
+  const saleOn = p.sale_price != null && (!p.sale_until || new Date(p.sale_until) > new Date());
+  return saleOn ? p.sale_price : p.price;
 }

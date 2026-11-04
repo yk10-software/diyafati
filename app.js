@@ -31,21 +31,91 @@
   };
 
   /* ---------- الحالة ---------- */
-  let products = Store.load();
+  // الكتالوج من Supabase. منحفظ آخر نسخة بالموبايل، لحتى التطبيق يفتح دغري
+  // ويشتغل حتى لو النت ضعيف، وبعدين منحدّثه من النت.
+  const CATALOG_KEY = 'diyafati_catalog_v1';
+  let settings = { shop_open: true, whatsapp: CONFIG.whatsapp, min_kilo: 0.5 };
+  let categories = [];
+  let products = [];
+  let stories = [];
   let cart = ls.get(CART_KEY, []);           // [{ id, qty, note }]
   let activeCat = 'all';
   let query = '';
 
-  const findProduct = id => products.find(p => p.id === id);
-  const visibleProducts = () => products.filter(p => p.available !== false);
-  const catName = id => (CATEGORIES.find(c => c.id === id) || {}).name || '';
+  const findProduct = id => products.find(p => p.id === Number(id));
+  const findCat = id => categories.find(c => c.id === id);
+  const catName = id => (findCat(id) || {}).name || '';
+  // الصنف بينطلب إذا متوفر، وقسمه مو «قريباً»
+  const isSoon = p => { const c = findCat(p.category_id); return !!(c && c.coming_soon); };
+  const canOrder = p => p && p.available && !isSoon(p);
 
   function cleanCart() {
-    cart = cart.filter(l => { const p = findProduct(l.id); return p && p.available !== false; });
+    cart = cart.filter(l => canOrder(findProduct(l.id)));
   }
   function saveCart() { ls.set(CART_KEY, cart); updateCartUI(); }
   function cartTotal() {
-    return cart.reduce((sum, l) => { const p = findProduct(l.id); return p ? sum + p.price * l.qty : sum; }, 0);
+    return cart.reduce((sum, l) => { const p = findProduct(l.id); return p ? sum + effectivePrice(p) * l.qty : sum; }, 0);
+  }
+
+  function applyCatalog(data) {
+    settings = data.settings || settings;
+    categories = data.categories;
+    // ترتيب الأصناف: حسب ترتيب الأقسام، وبعدين ترتيب الصنف
+    const catOrder = id => { const c = findCat(id); return c ? c.sort_order : 9999; };
+    products = data.products.sort((a, b) =>
+      catOrder(a.category_id) - catOrder(b.category_id) || a.sort_order - b.sort_order || a.id - b.id);
+    // القصة اللي خلصت كل صورها (بعد أسبوع) ما بتبيّن
+    stories = data.stories.filter(s => s.story_items.length);
+  }
+
+  // بيجيب كل الكتالوج من Supabase بنفس الوقت
+  async function fetchCatalog() {
+    const [settingsRows, cats, prods, strs] = await Promise.all([
+      API.get('settings?select=shop_open,whatsapp,hours_label,min_kilo,scheduled_enabled,schedule_max_days,cash_enabled'),
+      API.get('categories?select=id,name,sort_order,coming_soon&order=sort_order,id'),
+      API.get('products?select=id,category_id,name,description,price,sale_price,sale_until,unit,images,custom_note_label,available,sort_order'),
+      API.get('stories?select=id,title,story_items(id,image,product_id,sort_order)&order=sort_order,id&story_items.order=sort_order,id'),
+    ]);
+    return { settings: settingsRows[0], categories: cats, products: prods, stories: strs, at: Date.now() };
+  }
+
+  let lastFetch = 0;
+  async function refreshCatalog() {
+    lastFetch = Date.now();
+    try {
+      const data = await fetchCatalog();
+      ls.set(CATALOG_KEY, data);
+      applyCatalog(data);
+      cleanCart();
+      saveCart();
+      renderAll();
+    } catch (err) {
+      console.error(err);
+      // إذا ما في نسخة محفوظة، منقول للزبون ونعطيه زر يرجع يجرّب
+      if (!products.length) showLoadError();
+    }
+  }
+
+  function showLoadError() {
+    $('#grid').innerHTML = `
+      <div class="empty" style="grid-column:1/-1">
+        <b>ما قدرنا نجيب الأصناف</b>شيّك عالنت وجرّب كمان مرة.
+        <button class="btn ghost" id="retry" style="margin-top:16px">جرّب كمان مرة</button>
+      </div>`;
+  }
+
+  // صورة الصنف، وإذا ما إله صورة: كرت بهوية ضيافتي (قوس زبدي ولوغو)
+  function photo(src, alt = '') {
+    return src
+      ? `<img src="${escapeHTML(src)}" alt="${escapeHTML(alt)}" loading="lazy">`
+      : `<span class="ph"><img src="img/logo-mark.png" alt=""><small>${escapeHTML(alt)}</small></span>`;
+  }
+
+  // السعر، ومعه القديم مشطوب إذا في خصم
+  function priceHTML(p) {
+    const now = effectivePrice(p);
+    const old = now !== p.price ? `<s>${formatPrice(p.price)}</s> ` : '';
+    return `${old}${formatPrice(now)} <small>/ ${escapeHTML(p.unit)}</small>`;
   }
   function countLabel(n) {
     if (n === 1) return 'صنف واحد';
@@ -56,49 +126,71 @@
 
   /* ---------- العرض ---------- */
   function renderChips() {
-    $('#chips').innerHTML = CATEGORIES.map(c => `
+    // إذا القسم المختار انحذف من اللوحة، منرجع للكل
+    if (activeCat !== 'all' && !findCat(activeCat)) activeCat = 'all';
+    const all = { id: 'all', name: 'الكل' };
+    $('#chips').innerHTML = [all, ...categories].map(c => `
       <button class="chip" data-cat="${c.id}" aria-pressed="${c.id === activeCat}">
-        ${escapeHTML(c.name)}${c.soon ? '<small>قريباً</small>' : ''}
+        ${escapeHTML(c.name)}${c.coming_soon ? '<small>قريباً</small>' : ''}
       </button>`).join('');
   }
 
   function renderGrid() {
-    let list = visibleProducts();
-    if (activeCat !== 'all') list = list.filter(p => p.cat === activeCat);
+    let list = products;
+    if (activeCat !== 'all') list = list.filter(p => p.category_id === activeCat);
     if (query) {
       const q = normalizeAr(query);
-      list = list.filter(p => normalizeAr(p.name + ' ' + (p.desc || '')).includes(q));
+      list = list.filter(p => normalizeAr(p.name + ' ' + (p.description || '')).includes(q));
     }
     const grid = $('#grid');
     if (!list.length) {
-      const cat = CATEGORIES.find(c => c.id === activeCat);
-      grid.innerHTML = (cat && cat.soon && !query)
+      const cat = findCat(activeCat);
+      grid.innerHTML = (cat && cat.coming_soon && !query)
         ? `<div class="empty" style="grid-column:1/-1"><b>${escapeHTML(cat.name)}</b>رح تنضاف أصناف هالقسم قريباً.</div>`
         : `<div class="empty" style="grid-column:1/-1"><b>ما في نتائج</b>جرّب كلمة تانية أو اختار قسم تاني.</div>`;
       return;
     }
-    grid.innerHTML = list.map(p => `
-      <article class="card" data-open="${p.id}">
+    grid.innerHTML = list.map(p => {
+      const ok = canOrder(p);
+      const tag = !ok ? `<span class="out">${isSoon(p) ? 'قريباً' : 'خلص'}</span>` : '';
+      return `
+      <article class="card${ok ? '' : ' off'}" data-open="${p.id}">
         <div class="photo">
-          <img src="${escapeHTML(p.images[0] || '')}" alt="" loading="lazy">
-          <button class="add" data-add="${p.id}" aria-label="أضف ${escapeHTML(p.name)} للسلة">${ICON.plus}</button>
+          ${photo(p.images[0], p.images[0] ? '' : p.name)}
+          ${tag}
+          ${ok ? `<button class="add" data-add="${p.id}" aria-label="أضف ${escapeHTML(p.name)} للسلة">${ICON.plus}</button>` : ''}
         </div>
         <h3><button class="name-btn" data-open="${p.id}">${escapeHTML(p.name)}</button></h3>
-        <p class="price">${formatPrice(p.price)} <small>/ ${escapeHTML(p.unit)}</small></p>
-      </article>`).join('');
+        <p class="price">${priceHTML(p)}</p>
+      </article>`;
+    }).join('');
   }
 
   function renderStories() {
     const seen = ls.get(SEEN_KEY, []);
-    $('#stories').innerHTML = STORIES.map((s, i) => `
+    $('#stories').innerHTML = stories.map((s, i) => `
       <button class="story${seen.includes(s.id) ? ' seen' : ''}" data-story="${i}">
-        <div class="frame"><img src="${s.items[0].img}" alt=""></div>
+        <div class="frame"><img src="${escapeHTML(s.story_items[0].image)}" alt=""></div>
         <span>${escapeHTML(s.title)}</span>
       </button>`).join('');
   }
 
+  // إذا المحل مسكّر من اللوحة، منقول للزبون فوق
+  function renderClosed() {
+    let strip = $('#closedStrip');
+    if (settings.shop_open) { if (strip) strip.remove(); return; }
+    if (!strip) {
+      strip = document.createElement('div');
+      strip.id = 'closedStrip';
+      strip.className = 'notice-strip';
+      $('.app').prepend(strip);
+    }
+    strip.textContent = 'المحل مسكّر هلق، وما عم نستقبل طلبات. فيك تتفرّج عالأصناف.';
+  }
+
   function updateCartUI() {
-    const n = cart.length;
+    // منعدّ بس الأصناف اللي منعرفها (إذا لسا ما وصل الكتالوج، السلة ما بتبيّن)
+    const n = cart.filter(l => findProduct(l.id)).length;
     const badge = $('#cartCount');
     badge.textContent = n;
     badge.hidden = n === 0;
@@ -108,6 +200,8 @@
   }
 
   function renderAll() {
+    renderClosed();
+    $('#waLink').href = `https://wa.me/${settings.whatsapp}`;
     renderChips();
     renderGrid();
     renderStories();
@@ -177,45 +271,53 @@
   });
 
   /* ---------- صفحة الصنف ---------- */
+  // أقل كمية: بالكيلو حسب إعدادات المحل (نص كيلو أو أكتر)، وبالقطعة وحدة
+  const minQty = unit => unit === 'كيلو' ? Math.max(0.5, Number(settings.min_kilo) || 0.5) : 1;
+
   function stepperHTML(qty, unit, small) {
-    const step = qtyStep(unit);
     return `
       <div class="stepper${small ? ' small' : ''}">
         <button type="button" data-step="1" aria-label="زيادة">+</button>
         <output>${formatQty(qty, unit)}</output>
-        <button type="button" data-step="-1" aria-label="تنقيص" ${qty <= step ? 'disabled' : ''}>−</button>
+        <button type="button" data-step="-1" aria-label="تنقيص" ${qty <= minQty(unit) ? 'disabled' : ''}>−</button>
       </div>`;
   }
+  const stepQty = (qty, unit, dir) => Math.min(100, Math.max(minQty(unit), qty + qtyStep(unit) * dir));
 
   function openProduct(id) {
     const p = findProduct(id);
     if (!p) return;
-    let qty = 1;
-    const imgs = p.images.length ? p.images : [''];
+    let qty = Math.max(1, minQty(p.unit));
+    const price = effectivePrice(p);
+    const ok = canOrder(p);
+    const imgs = p.images.length ? p.images : [null];
 
     const sheet = openSheet(`
       <div class="sheet-head">
-        <span class="price"><small>${escapeHTML(catName(p.cat))}</small></span>
+        <span class="price"><small>${escapeHTML(catName(p.category_id))}</small></span>
         <button class="close" aria-label="إغلاق">×</button>
       </div>
-      <div class="gallery" id="gal">${imgs.map(src => `<img src="${escapeHTML(src)}" alt="${escapeHTML(p.name)}">`).join('')}</div>
+      <div class="gallery" id="gal">${imgs.map(src => photo(src, src ? p.name : '')).join('')}</div>
       ${imgs.length > 1 ? `<div class="dots">${imgs.map((_, i) => `<i class="${i ? '' : 'on'}"></i>`).join('')}</div>` : ''}
       <h2 class="p-name">${escapeHTML(p.name)}</h2>
-      <p class="price">${formatPrice(p.price)} <small>/ ${escapeHTML(p.unit)}</small></p>
-      ${p.desc ? `<p class="p-desc">${escapeHTML(p.desc)}</p>` : ''}
-      ${p.customNote ? `
+      <p class="price">${priceHTML(p)}</p>
+      ${p.description ? `<p class="p-desc">${escapeHTML(p.description)}</p>` : ''}
+      ${ok && p.custom_note_label ? `
         <label class="field" style="margin-top:18px">
-          <span>${escapeHTML(p.customNote)}</span>
-          <input id="pNote" maxlength="120" placeholder="مثلاً: أهلاً بـ «جود» ٢٠٢٦">
+          <span>${escapeHTML(p.custom_note_label)}</span>
+          <input id="pNote" maxlength="120" placeholder="مثلاً: أهلاً بـ «جود» 2026">
         </label>` : ''}
       <div class="buy">
+        ${ok ? `
         <div class="buy-row">
           <div id="qtyBox" aria-label="الكمية">${stepperHTML(qty, p.unit)}</div>
-          <b class="buy-total" id="pTotal" aria-live="polite">${formatPrice(p.price * qty)}</b>
+          <b class="buy-total" id="pTotal" aria-live="polite">${formatPrice(price * qty)}</b>
         </div>
-        <button class="btn" id="pAdd">أضف للسلة</button>
+        <button class="btn" id="pAdd">أضف للسلة</button>` : `
+        <button class="btn" disabled>${isSoon(p) ? 'قريباً' : 'خلص هلق، رجّع شوفه بعدين'}</button>`}
       </div>
     `, { label: p.name });
+    if (!ok) return;
 
     const gal = $('#gal', sheet);
     if (imgs.length > 1) {
@@ -228,14 +330,13 @@
     $('#qtyBox', sheet).addEventListener('click', e => {
       const b = e.target.closest('[data-step]');
       if (!b) return;
-      const step = qtyStep(p.unit);
-      qty = Math.min(100, Math.max(step, qty + step * Number(b.dataset.step)));
+      qty = stepQty(qty, p.unit, Number(b.dataset.step));
       $('#qtyBox', sheet).innerHTML = stepperHTML(qty, p.unit);
-      $('#pTotal', sheet).textContent = formatPrice(p.price * qty);
+      $('#pTotal', sheet).textContent = formatPrice(price * qty);
     });
 
     $('#pAdd', sheet).addEventListener('click', () => {
-      const note = p.customNote ? $('#pNote', sheet).value.trim() : '';
+      const note = p.custom_note_label ? $('#pNote', sheet).value.trim() : '';
       addToCart(p.id, qty, note);
       closeSheet();
       toast('انضاف ' + formatQty(qty, p.unit) + ' ' + p.name + ' للسلة');
@@ -261,13 +362,13 @@
       if (stepBtn && row) {
         const l = cart[Number(row.dataset.line)];
         const p = findProduct(l.id);
-        const step = qtyStep(p.unit);
-        l.qty = Math.min(100, Math.max(step, l.qty + step * Number(stepBtn.dataset.step)));
+        l.qty = stepQty(l.qty, p.unit, Number(stepBtn.dataset.step));
         saveCart(); renderCartInto(sheet);
       } else if (rm) {
         cart.splice(Number(rm.dataset.remove), 1);
         saveCart(); renderCartInto(sheet);
       } else if (e.target.closest('#toCheckout')) {
+        if (!settings.shop_open) { toast('المحل مسكّر هلق، جرّب بعدين'); return; }
         openCheckout();
       } else if (e.target.closest('#browse')) {
         closeSheet();
@@ -290,7 +391,7 @@
         const p = findProduct(l.id);
         return `
           <div class="c-item" data-line="${i}">
-            <img src="${escapeHTML(p.images[0] || '')}" alt="">
+            ${photo(p.images[0])}
             <div>
               <h4>${escapeHTML(p.name)}</h4>
               ${l.note ? `<p class="note">${escapeHTML(l.note)}</p>` : ''}
@@ -299,7 +400,7 @@
                 <button class="link-btn" data-remove="${i}">إزالة</button>
               </div>
             </div>
-            <span class="sum">${formatPrice(p.price * l.qty)}</span>
+            <span class="sum">${formatPrice(effectivePrice(p) * l.qty)}</span>
           </div>`;
       }).join('')}
       <div class="totals"><span>المجموع</span><b>${formatPrice(cartTotal())}</b></div>
@@ -411,13 +512,13 @@
 
   function buildMessage(d, mode, orderId) {
     const L = [];
-    L.push(`*طلب جديد من تطبيق ${CONFIG.shopName}*${CONFIG.demo ? ' (تجريبي)' : ''}`);
+    L.push(`*طلب جديد من تطبيق ${CONFIG.shopName}*`);
     L.push(`رقم الطلب: #${orderId}`);
     L.push('');
     L.push('*الأصناف:*');
     cart.forEach(l => {
       const p = findProduct(l.id);
-      L.push(`- ${p.name}: ${formatQty(l.qty, p.unit)} = ${formatPrice(p.price * l.qty)}`);
+      L.push(`- ${p.name}: ${formatQty(l.qty, p.unit)} = ${formatPrice(effectivePrice(p) * l.qty)}`);
       if (l.note) L.push(`  ملاحظة: ${l.note}`);
     });
     L.push('');
@@ -434,7 +535,7 @@
 
   function sendOrder(d, mode) {
     const orderId = 'D' + String(Date.now()).slice(-5);
-    const url = `https://wa.me/${CONFIG.whatsapp}?text=${encodeURIComponent(buildMessage(d, mode, orderId))}`;
+    const url = `https://wa.me/${settings.whatsapp}?text=${encodeURIComponent(buildMessage(d, mode, orderId))}`;
     const win = window.open(url, '_blank');
     if (win) { try { win.opener = null; } catch (e) {} }
     else window.location.href = url;
@@ -479,31 +580,31 @@
   function showStory(g, i) {
     if (!storyState) return;
     clearTimeout(storyState.timer);
-    if (i >= STORIES[g].items.length) { g++; i = 0; }
-    if (i < 0) { if (g > 0) { g--; i = STORIES[g].items.length - 1; } else i = 0; }
-    if (g >= STORIES.length) { closeStory(); return; }
+    if (i >= stories[g].story_items.length) { g++; i = 0; }
+    if (i < 0) { if (g > 0) { g--; i = stories[g].story_items.length - 1; } else i = 0; }
+    if (g >= stories.length) { closeStory(); return; }
 
-    const s = STORIES[g];
-    const item = s.items[i];
+    const s = stories[g];
+    const item = s.story_items[i];
     const seen = ls.get(SEEN_KEY, []);
     if (!seen.includes(s.id)) { seen.push(s.id); ls.set(SEEN_KEY, seen); }
     storyState.g = g;
     storyState.i = i;
-    const p = findProduct(item.product);
-    const canOrder = p && p.available !== false;
+    const p = item.product_id ? findProduct(item.product_id) : null;
+    const orderable = canOrder(p);
     storyState.el.setAttribute('aria-label', s.title);
     storyState.el.innerHTML = `
-      <div class="bars">${s.items.map((_, k) => `<i class="${k < i ? 'done' : k === i ? 'run' : ''}"><b></b></i>`).join('')}</div>
+      <div class="bars">${s.story_items.map((_, k) => `<i class="${k < i ? 'done' : k === i ? 'run' : ''}"><b></b></i>`).join('')}</div>
       <div class="s-head">
         <div><img src="img/logo-mark.png" alt=""><span>${escapeHTML(s.title)}</span></div>
         <button class="s-close" aria-label="إغلاق">×</button>
       </div>
       <div class="s-img">
-        <img src="${escapeHTML(item.img)}" alt="${canOrder ? escapeHTML(p.name) : ''}">
+        <img src="${escapeHTML(item.image)}" alt="${orderable ? escapeHTML(p.name) : ''}">
         <button class="tap prev" aria-label="السابق"></button>
         <button class="tap next" aria-label="التالي"></button>
       </div>
-      <div class="s-foot">${canOrder ? `<button class="btn" data-order="${p.id}">اطلب ${escapeHTML(p.name)}</button>` : ''}</div>`;
+      <div class="s-foot">${orderable ? `<button class="btn" data-order="${p.id}">اطلب ${escapeHTML(p.name)}</button>` : ''}</div>`;
     storyState.timer = setTimeout(() => showStory(storyState.g, storyState.i + 1), 4500);
   }
 
@@ -568,9 +669,10 @@
       const add = e.target.closest('[data-add]');
       if (add) {
         const p = findProduct(add.dataset.add);
-        if (p.customNote) { openProduct(p.id); return; }
-        addToCart(p.id, 1);
-        toast('انضاف ' + formatQty(1, p.unit) + ' ' + p.name + ' للسلة');
+        if (p.custom_note_label) { openProduct(p.id); return; }
+        const q = Math.max(1, minQty(p.unit));
+        addToCart(p.id, q);
+        toast('انضاف ' + formatQty(q, p.unit) + ' ' + p.name + ' للسلة');
         return;
       }
       const card = e.target.closest('[data-open]');
@@ -582,6 +684,7 @@
     });
     $('#cartBtn').addEventListener('click', openCart);
     $('#cartBar').addEventListener('click', openCart);
+    $('#grid').addEventListener('click', e => { if (e.target.closest('#retry')) { e.stopPropagation(); refreshCatalog(); } }, true);
 
     $('#installBtn').addEventListener('click', async () => {
       if (deferredPrompt) {
@@ -598,23 +701,21 @@
       ls.set(INSTALL_KEY, true);
     });
 
-    // إذا انعدّل شي من لوحة التحكم، بيتحدّث التطبيق لحاله
-    const refresh = () => { products = Store.load(); cleanCart(); saveCart(); renderAll(); };
-    window.addEventListener('storage', e => { if (e.key === PRODUCTS_KEY) refresh(); });
-    document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+    // لما يرجع الزبون عالتطبيق، منجيب آخر تعديلات اللوحة (مو أكتر من مرة بالدقيقة)
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden && Date.now() - lastFetch > 60000) refreshCatalog();
+    });
   }
 
   /* ---------- البداية ---------- */
-  if (demoExpired()) { showDemoExpired(); return; }
-  addDemoStrip();
   if (history.state && history.state.overlay) history.replaceState(null, '');
-  $('#waLink').href = `https://wa.me/${CONFIG.whatsapp}`;
-  if (!CONFIG.demo) {
-    $('#credit').innerHTML = 'تصميم وتطوير <a href="https://yk10-software.netlify.app" target="_blank" rel="noopener">YK10 Software</a>';
-  }
-  cleanCart();
+  // أول شي النسخة المحفوظة (إذا في)، وبعدين من النت
+  const cached = ls.get(CATALOG_KEY, null);
+  if (cached) { applyCatalog(cached); cleanCart(); }
   renderAll();
+  if (!cached) $('#grid').innerHTML = '<div class="empty" style="grid-column:1/-1">لحظة، عم نجيب الأصناف...</div>';
   bind();
+  refreshCatalog();
   maybeShowInstall();
 
   if ('serviceWorker' in navigator) {

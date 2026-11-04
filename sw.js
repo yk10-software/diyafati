@@ -1,10 +1,10 @@
 /* ضيافتي — بيخلّي التطبيق يفتح بسرعة وحتى لو النت ضعيف.
    كل ما تعدّل ملفات وترفعها، كبّر رقم النسخة هون، وكمان رقم ?v= بـ index.html و admin.html وبالقائمة تحت. */
-const CACHE = 'diyafati-v7';
+const CACHE = 'diyafati-v8';
 const SHELL = [
-  './', 'index.html', 'admin.html', 'styles.css?v=6', 'data.js?v=6', 'app.js?v=6', 'admin.js?v=6',
-  'reset.html', 'config.js?v=6', 'supa.js?v=6', 'reset.js?v=6',
-  'admin-products.js?v=6', 'admin-categories.js?v=6', 'admin-settings.js?v=6',
+  './', 'index.html', 'admin.html', 'styles.css?v=7', 'data.js?v=7', 'app.js?v=7', 'admin.js?v=7',
+  'reset.html', 'config.js?v=7', 'api.js?v=7', 'supa.js?v=7', 'reset.js?v=7',
+  'admin-products.js?v=7', 'admin-categories.js?v=7', 'admin-settings.js?v=7',
   'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-64.png',
   'img/logo-mark.png', 'img/logo-word.png', 'img/logo-full.png',

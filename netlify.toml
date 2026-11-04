@@ -3,6 +3,13 @@
 [build]
   publish = "."
 
+# ⚠ حماية الرصيد: كل production deploy ناجح بـ 15 رصيد، والفاشل ببلاش.
+# فرع dev لازم يضل branch deploy (ببلاش). إذا بالغلط صار dev فرع production،
+# البناء بيفشل بدل ما ياكل رصيد مع كل رفعة.
+# وقت الإطلاق الحقيقي لازم ينشال هالقسم من الفرع اللي رح ينرفع.
+[context.production]
+  command = "echo 'production deploy ممنوع على dev، شوف CLAUDE.md' && exit 1"
+
 # الـ service worker لازم ما ينحفظ بالكاش، وإلا التحديثات ما بتوصل للموبايلات
 [[headers]]
   for = "/sw.js"

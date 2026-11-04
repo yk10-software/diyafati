@@ -23,6 +23,8 @@
   };
 
   const ICON = {
+    instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17" cy="7" r="1" fill="currentColor" stroke="none"/></svg>',
+    facebook: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 21v-7.5H16l.5-3h-3V8.6c0-.9.3-1.5 1.5-1.5h1.6V4.4c-.3 0-1.2-.1-2.3-.1-2.3 0-3.8 1.4-3.8 3.9v2.3H8v3h2.5V21h3Z"/></svg>',
     plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
     whats: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8-.2-.1-.4-.1-.6.1l-.8 1c-.1.2-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.2-.4.2-.4.7-1.3.1-.2 0-.3 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.8 11.9 11.9 0 0 0 4.6 4c1.7.7 2.3.8 3.2.7.5-.1 1.5-.6 1.8-1.2.2-.6.2-1.1.1-1.2l-.5-.3Z"/></svg>',
     cash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6 9.5v5M18 9.5v5"/></svg>',
@@ -212,6 +214,18 @@
       </figure>`).join('');
   }
 
+  // أيقونات الفوتر: الرابط الفاضي ما إله أيقونة، والواتس دايماً من إعدادات المحل
+  function renderSocials() {
+    const https = url => (/^https:\/\//i.test(url || '') ? url : '');
+    const links = [
+      [https(settings.instagram_url), 'انستغرام', ICON.instagram],
+      [https(settings.facebook_url), 'فيسبوك', ICON.facebook],
+      [`https://wa.me/${settings.whatsapp}`, 'واتساب', ICON.whats],
+    ];
+    $('#socials').innerHTML = links.filter(l => l[0]).map(([url, label, icon]) =>
+      `<a class="icon-btn" href="${escapeHTML(url)}" target="_blank" rel="noopener" aria-label="${label}">${icon}</a>`).join('');
+  }
+
   // إذا المحل مسكّر من اللوحة، منقول للزبون فوق
   function renderClosed() {
     let strip = $('#closedStrip');
@@ -238,7 +252,7 @@
 
   function renderAll() {
     renderClosed();
-    $('#waLink').href = `https://wa.me/${settings.whatsapp}`;
+    renderSocials();
     renderChips();
     renderGrid();
     renderStories();
@@ -1233,7 +1247,7 @@
     $('#chips').addEventListener('click', e => {
       const b = e.target.closest('[data-cat]');
       if (!b) return;
-      activeCat = b.dataset.cat;
+      activeCat = b.dataset.cat === 'all' ? 'all' : Number(b.dataset.cat);   // ids الأقسام أرقام، و dataset نص
       renderChips();
       renderGrid();
     });

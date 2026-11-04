@@ -16,6 +16,8 @@
   // رقم الواتس للعرض: 963953334642 ← ‎+963 953 334 642
   const prettyPhone = d => '+' + d.slice(0, 3) + ' ' + d.slice(3).replace(/(\d{3})(?=\d)/g, '$1 ');
 
+  const linkText = url => (url ? `<bdi dir="ltr" class="link-url">${escapeHTML(url)}</bdi>` : 'ما في رابط');
+
   function render() {
     const s = state.settings;
     // غلاف جديد بكل مرة، لحتى ما تتراكم الـ listeners على #view
@@ -100,6 +102,19 @@
           <a class="link-btn" href="#reviews">إدارة</a>
         </div>
       </div>
+
+      <div class="sec"><h2>روابط التواصل</h2></div>
+      <div class="a-card">
+        <div class="srow">
+          <div class="lbl"><b>انستغرام</b><span>${linkText(s.instagram_url)}</span></div>
+          <button class="link-btn" type="button" data-set="instagram_url">تغيير</button>
+        </div>
+        <div class="srow">
+          <div class="lbl"><b>فيسبوك</b><span>${linkText(s.facebook_url)}</span></div>
+          <button class="link-btn" type="button" data-set="facebook_url">تغيير</button>
+        </div>
+      </div>
+      <p class="caption">إذا الرابط فاضي، الأيقونة ما بتطلع بالموقع.</p>
 
       <div class="sec"><h2>الإشعارات</h2></div>
       <div class="a-card" id="pushBox"></div>
@@ -236,6 +251,22 @@
     }
   }
 
+  // خانة فاضية مسموحة (بتخفي الأيقونة)، وغير هيك لازم رابط https
+  function linkField(title, example) {
+    return {
+      title,
+      input: v => `<input name="v" type="url" dir="ltr" inputmode="url" autocomplete="off" value="${escapeHTML(v ?? '')}" placeholder="${example}">`,
+      hint: 'خليها فاضية لتخفي الأيقونة من الموقع.',
+      err: 'لازم يكون رابط كامل بيبلّش بـ https://',
+      parse(v) {
+        const url = v.trim();
+        if (!url) return '';
+        try { return new URL(url).protocol === 'https:' ? url : null; }
+        catch (err) { return null; }
+      },
+    };
+  }
+
   /* ---------- تعديل إعداد واحد (واتس، أقل كمية، أيام الموعد) ---------- */
   const FIELDS = {
     whatsapp: {
@@ -251,6 +282,8 @@
         return d.length >= 10 && d.length <= 15 ? d : null;
       },
     },
+    instagram_url: linkField('رابط انستغرام', 'https://www.instagram.com/...'),
+    facebook_url: linkField('رابط فيسبوك', 'https://www.facebook.com/...'),
     min_kilo: {
       title: 'أقل كمية للطلب (بالكيلو)',
       input: v => `<select name="v">${[0.5, 1, 1.5, 2, 3, 5].map(q =>

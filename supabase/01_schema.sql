@@ -20,6 +20,8 @@ create table if not exists public.settings (
   hours_label        text    not null default 'كل يوم من 9 الصبح لـ 10 بالليل',
   open_time          time    not null default '09:00',   -- الدوام: منه بتطلع مواعيد التوصيل
   close_time         time    not null default '22:00',
+  instagram_url      text    not null default 'https://www.instagram.com/diyafati_hama_2',
+  facebook_url       text    not null default 'https://www.facebook.com/share/1E6URHXfHx/',
   min_kilo           numeric(5,1) not null default 0.5,  -- أقل كمية لصنف بالكيلو
   scheduled_enabled  boolean not null default true,      -- «استقبال طلبات بموعد»
   schedule_max_days  int     not null default 30,        -- لحد كم يوم لقدام

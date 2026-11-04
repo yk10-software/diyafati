@@ -163,7 +163,11 @@ button { cursor: pointer; }
 .footer img { height: 72px; width: auto; margin: 0 auto 12px; }
 .footer a { color: var(--cocoa); }
 .footer p { margin: 6px 0; }
-.footer .credit { margin-top: 14px; font-size: 12px; }
+.socials { display: flex; justify-content: center; gap: 10px; }
+.socials .icon-btn { text-decoration: none; }
+/* هوية YK10: الاستثناء الوحيد عن ألوان ضيافتي */
+.footer .yk-badge { display: inline-block; margin-top: 16px; padding: 5px 12px; border-radius: 8px; background: #080808; color: #D4AF37; font-size: 12px; text-decoration: none; }
+.link-url { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
 
 /* ---------- شريط السلة ---------- */
 .cartbar {

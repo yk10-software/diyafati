@@ -175,11 +175,12 @@ body:has(#cartBar:not([hidden])) .yk-foot { padding-bottom: calc(20px + 70px + v
 .yk-logo { display: inline-block; margin-top: 6px; text-decoration: none; font-family: system-ui, "Segoe UI", sans-serif; }
 .yk-name { display: block; direction: ltr; font-family: system-ui, "Segoe UI", sans-serif; font-weight: 900; font-size: 1.7rem; line-height: 1.1; background: linear-gradient(90deg, #D4A82C, #F5DE96); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .yk-soft { display: block; margin-top: 2px; direction: ltr; font-weight: 700; font-size: .6rem; color: #D9AE38; letter-spacing: .06em; }
-.yk-cta { display: flex; width: fit-content; align-items: center; gap: 8px; margin: 14px auto 0; color: #9A9A9A; font-size: .85rem; text-decoration: none; transition: color .15s; }
-.yk-cta .ic { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: #1C1C1C; transition: background .15s; }
-.yk-cta svg { width: 18px; height: 18px; }
+.yk-row { display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 14px; }
+.yk-cta { display: flex; align-items: center; gap: 8px; color: #9A9A9A; font-size: .85rem; text-decoration: none; transition: color .15s; }
+.yk-row .ic { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: #1C1C1C; color: #9A9A9A; transition: background .15s, color .15s; }
+.yk-row svg { width: 18px; height: 18px; }
 .yk-cta:hover, .yk-cta:focus-visible { color: #F5DE96; }
-.yk-cta:hover .ic, .yk-cta:focus-visible .ic { background: #2A2A2A; }
+.yk-cta:hover .ic, .yk-cta:focus-visible .ic, a.ic:hover, a.ic:focus-visible { background: #2A2A2A; color: #F5DE96; }
 .yk-foot :focus-visible { outline-color: #F5DE96; }
 .yk-copy { margin-top: 12px !important; font-size: .7rem; }
 .link-url { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }

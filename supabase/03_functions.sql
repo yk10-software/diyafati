@@ -98,6 +98,9 @@ declare
   v_sched   timestamptz;
   v_qty     numeric;
   v_step    numeric;
+  v_day     text;
+  v_open    time;
+  v_close   time;
   v_price   bigint;
   v_line    bigint;
   v_subtotal bigint := 0;
@@ -222,7 +225,11 @@ begin
       raise exception 'invalid_schedule';
     end if;
     -- الموعد لازم يكون ضمن دوام المحل بتوقيت دمشق
-    if (v_sched at time zone 'Asia/Damascus')::time not between s.open_time and s.close_time then
+    -- الدوام حسب اليوم: إذا اليوم إله دوام مختلف بـ day_hours منستعمله، وإلا الدوام العادي
+    v_day   := extract(dow from (v_sched at time zone 'Asia/Damascus'))::int::text;
+    v_open  := coalesce((s.day_hours -> v_day ->> 'open')::time, s.open_time);
+    v_close := coalesce((s.day_hours -> v_day ->> 'close')::time, s.close_time);
+    if (v_sched at time zone 'Asia/Damascus')::time not between v_open and v_close then
       raise exception 'outside_hours';
     end if;
   elsif v_mode <> 'asap' then

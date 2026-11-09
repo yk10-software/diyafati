@@ -671,8 +671,12 @@
   // قوائم اليوم والساعة بدل خانات المتصفح، لأنها بتعرض أرقام عربية على أجهزة لغتها عربي
   // المواعيد بتطلع من دوام المحل (الإعدادات): كل نص ساعة من الفتح للسكر
   const toMin = t => { const [h, m] = String(t).split(':').map(Number); return h * 60 + m; };
-  const openMin = () => toMin(settings.open_time || '09:00');
-  const closeMin = () => toMin(settings.close_time || '22:00');
+  // الدوام حسب اليوم: day_hours فيه الأيام المختلفة (0 الأحد ... 5 الجمعة)، والباقي الدوام العادي
+  const weekday = date => new Date(`${date}T12:00:00Z`).getUTCDay();
+  function hoursOf(date) {
+    const d = (settings.day_hours || {})[weekday(date)];
+    return d ? [toMin(d.open), toMin(d.close)] : [toMin(settings.open_time || '09:00'), toMin(settings.close_time || '22:00')];
+  }
   const clockOf = t => clock(`2026-01-01T${t}:00+03:00`);
 
   // الساعات المتاحة بيوم معيّن: اللي بعد هلق، وضمن المدى المسموح
@@ -680,7 +684,8 @@
     const now = Date.now();
     const last = now + (settings.schedule_max_days || 30) * 86400000;
     const out = [];
-    for (let m = openMin(); m <= closeMin(); m += 30) {
+    const [open, close] = hoursOf(date);
+    for (let m = open; m <= close; m += 30) {
       const t = String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
       const at = new Date(`${date}T${t}:00+03:00`).getTime();
       if (at > now && at <= last) out.push(t);
@@ -699,10 +704,21 @@
     return '<option value="">اختار</option>' + slots(date).map(t =>
       `<option value="${t}" ${t === selected ? 'selected' : ''}>${clockOf(t)}</option>`).join('');
   }
+  // متى بيفتح المحل الجاية: اليوم إذا لسا ما فتح، وإلا بكرا (بدوام بكرا)
+  function nextOpening() {
+    const today = todayISO();
+    const now = toMin(new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date()));
+    const [open] = hoursOf(today);
+    const day = now < open ? today : addDays(today, 1);
+    const m = hoursOf(day)[0];
+    const t = String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0');
+    return (day === today ? '' : 'بكرا ') + clockOf(t);
+  }
   // هل المحل هلق برا الدوام؟ (بتوقيت دمشق)
   function outsideHours() {
     const now = toMin(new Intl.DateTimeFormat('en-GB', { timeZone: TZ, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(new Date()));
-    return now < openMin() || now > closeMin();
+    const [open, close] = hoursOf(todayISO());
+    return now < open || now > close;
   }
 
   /* ---------- الخطوة 1: تفاصيل الطلب ---------- */
@@ -773,7 +789,7 @@
           <button type="button" data-mode="asap" aria-pressed="${draft.mode === 'asap'}">بأقرب وقت</button>
           ${settings.scheduled_enabled ? `<button type="button" data-mode="scheduled" aria-pressed="${draft.mode === 'scheduled'}">بموعد محدد</button>` : ''}
         </div>
-        <p class="caption" id="asapNote" ${late && draft.mode === 'asap' ? '' : 'hidden'}>المحل هلق برا الدوام، فطلبك بينجهز لما نفتح الساعة ${clockOf(String(settings.open_time || '09:00').slice(0, 5))}.</p>
+        <p class="caption" id="asapNote" ${late && draft.mode === 'asap' ? '' : 'hidden'}>المحل هلق برا الدوام، فطلبك بينجهز لما نفتح ${nextOpening()}.</p>
         <div class="two" id="when" ${draft.mode === 'scheduled' ? '' : 'hidden'}>
           <label class="field" data-f="date">
             <span>اليوم</span>

@@ -561,6 +561,9 @@ body.in-panel .toast { bottom: calc(150px + var(--safe-b)); }
 .si-add { display: block; text-align: center; cursor: pointer; margin-bottom: 12px; }
 
 /* الرئيسية */
+.day-row { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 4px; }
+.day-row .two { margin-top: 6px; }
+.day-row .two[hidden] { display: none; }
 .shop-card { padding: 0 14px; }
 .shop-card .open-row { padding: 12px 0; border-bottom: 1px solid var(--line); }
 .shop-card .open-row b { color: var(--done, #1B7A47); font-size: 17px; }

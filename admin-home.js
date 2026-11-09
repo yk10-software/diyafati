@@ -54,7 +54,13 @@
   const short = t => String(t).slice(0, 5);
   const clockOf = t => new Date(`2026-01-01T${short(t)}:00+03:00`)
     .toLocaleTimeString('ar-SY-u-nu-latn', { hour: 'numeric', minute: '2-digit', timeZone: TZ });
-  const hoursText = (open, close) => `كل يوم من ${clockOf(open)} لـ ${clockOf(close)}`;
+  // الأيام بترتيب الأسبوع بسوريا، والرقم متل JavaScript (0 الأحد)
+  const DAYS = [[6, 'السبت'], [0, 'الأحد'], [1, 'الإتنين'], [2, 'التلاتا'], [3, 'الأربعا'], [4, 'الخميس'], [5, 'الجمعة']];
+  function hoursText(open, close, days = {}) {
+    const extra = DAYS.filter(([d]) => days[d]).map(([d, name]) => `${name} من ${clockOf(days[d].open)} لـ ${clockOf(days[d].close)}`);
+    const base = `${extra.length ? 'باقي الأيام' : 'كل يوم'} من ${clockOf(open)} لـ ${clockOf(close)}`;
+    return extra.length ? `${extra.join('، ')}، و${base}` : base;
+  }
 
   function hourOptions(selected) {
     let out = '';
@@ -70,24 +76,53 @@
     const sheet = A.openSheet(`
       <div class="sheet-head"><h2>دوام المحل</h2><button class="close" aria-label="إغلاق">×</button></div>
       <form id="hForm" novalidate>
+        <h3 class="sheet-sub">الدوام العادي</h3>
         <div class="two">
           <label class="field"><span>بيفتح</span><select name="open">${hourOptions(s.open_time || '09:00')}</select></label>
           <label class="field" data-f="close"><span>بيسكّر</span><select name="close">${hourOptions(s.close_time || '22:00')}</select>
             <span class="err">لازم يكون بعد الفتح.</span></label>
         </div>
-        <p class="caption" style="margin-top:-6px">الزبون بيختار موعد التوصيل ضمن هالساعات بس، كل نص ساعة.</p>
+        <h3 class="sheet-sub">أيام بدوام مختلف</h3>
+        ${DAYS.map(([d, name]) => {
+          const x = (s.day_hours || {})[d];
+          return `
+          <div class="day-row" data-day="${d}">
+            <label class="check"><input type="checkbox" name="on${d}" ${x ? 'checked' : ''}> ${name}</label>
+            <div class="two" ${x ? '' : 'hidden'}>
+              <label class="field"><span>بيفتح</span><select name="open${d}">${hourOptions((x || {}).open || s.open_time || '09:00')}</select></label>
+              <label class="field" data-f="close${d}"><span>بيسكّر</span><select name="close${d}">${hourOptions((x || {}).close || s.close_time || '22:00')}</select>
+                <span class="err">لازم يكون بعد الفتح.</span></label>
+            </div>
+          </div>`;
+        }).join('')}
+        <p class="caption">الزبون بيختار موعد التوصيل ضمن دوام اليوم اللي اختاره، كل نص ساعة.</p>
         <button class="btn" type="submit" style="margin-top:14px">حفظ</button>
       </form>
     `);
     const form = $('#hForm', sheet);
     const f = form.elements;
-    form.addEventListener('change', () => form.querySelector('[data-f="close"]').classList.remove('invalid'));
+    form.addEventListener('change', e => {
+      form.querySelectorAll('.field.invalid').forEach(x => x.classList.remove('invalid'));
+      const on = e.target.name && e.target.name.match(/^on(\d)$/);
+      if (on) form.querySelector(`[data-day="${on[1]}"] .two`).hidden = !e.target.checked;
+    });
     form.addEventListener('submit', async e => {
       e.preventDefault();
-      if (f.close.value <= f.open.value) { form.querySelector('[data-f="close"]').classList.add('invalid'); return; }
+      let bad = f.close.value <= f.open.value;
+      form.querySelector('[data-f="close"]').classList.toggle('invalid', bad);
+      const days = {};
+      DAYS.forEach(([d]) => {
+        if (!f['on' + d].checked) return;
+        const wrong = f['close' + d].value <= f['open' + d].value;
+        form.querySelector(`[data-f="close${d}"]`).classList.toggle('invalid', wrong);
+        if (wrong) bad = true;
+        days[d] = { open: f['open' + d].value, close: f['close' + d].value };
+      });
+      if (bad) return;
       A.busy(form, true);
       const ok = await A.saveSettings({
-        open_time: f.open.value, close_time: f.close.value, hours_label: hoursText(f.open.value, f.close.value),
+        open_time: f.open.value, close_time: f.close.value, day_hours: days,
+        hours_label: hoursText(f.open.value, f.close.value, days),
       }, 'انحفظ الدوام');
       A.busy(form, false);
       if (ok) { A.closeSheet(); render($('#view')); }
@@ -126,7 +161,7 @@
             <label class="switch"><input type="checkbox" id="hOpen" ${open ? 'checked' : ''} aria-label="المحل مفتوح للطلبات"><span></span></label>
           </div>
           <div class="srow">
-            <div class="lbl"><b>دوام المحل</b><span>${hoursText(state.settings.open_time || '09:00', state.settings.close_time || '22:00')}</span></div>
+            <div class="lbl"><b>دوام المحل</b><span>${hoursText(state.settings.open_time || '09:00', state.settings.close_time || '22:00', state.settings.day_hours || {})}</span></div>
             <button class="link-btn" type="button" id="hoursBtn">تغيير</button>
           </div>
         </div>

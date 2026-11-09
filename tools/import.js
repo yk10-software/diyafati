@@ -16,7 +16,8 @@
   const DEMO_CATS = ['ضيافة مواليد', 'شوكولا', 'ملبس', 'أزهار'];
   const DEMO_PRODUCTS = ['هريسة لوز بيبي صبي', 'هريسة لوز بيبي بنت', 'شوكولا ضيافتي ميكس', 'شوكولا ضيافتي ويفر باللوتس', 'ملبس مطبوع خاص'];
 
-  let pack = null;   // { cats, products }
+  let pack = null;   // { cats, products }. أي مفتاح تاني بالحزمة (متل pending_images) بيتجاهل
+  let updateCatImages = true;   // القسم الموجود: منحدّث صورته من الحزمة
   let db_ = { cats: [], products: [], items: [] };
   const demo = { on: false, cats: new Set(), products: new Set() };
 
@@ -193,6 +194,7 @@
   const ready = p => !p.skip && p.name && !priceProblem(p) && !piecesProblem(p) && !existsProduct(p.name);
 
   function renderCats() {
+    $('#catOpts').innerHTML = `<label class="check"><input type="checkbox" id="updImg" ${updateCatImages ? 'checked' : ''}> حدّث صور الأقسام الموجودة من الحزمة</label>`;
     $('#cats').innerHTML = `
       <tr><th>الصورة</th><th>اسم القسم</th><th>الترتيب</th><th>ملاحظات</th></tr>
       ${pack.cats.map((c, i) => `
@@ -204,7 +206,7 @@
           </td>
           <td><input type="text" data-cat-name="${i}" value="${escapeHTML(c.name)}" aria-label="اسم القسم"></td>
           <td>${escapeHTML(c.sort_order)}</td>
-          <td>${flagsHTML(c.flags)}${existsCat(c.name) ? '<span class="ok">موجود، ما رح يتكرر</span>' : ''}</td>
+          <td>${flagsHTML(c.flags)}${existsCat(c.name) ? `<span class="ok">موجود، ما رح يتكرر${c.pic && updateCatImages ? '، وصورته بتتحدّث' : ''}</span>` : ''}</td>
         </tr>`).join('')}`;
   }
 
@@ -301,8 +303,8 @@
     refreshSum();
   });
 
-  // صورة من الجهاز: منصغّرها لـ 900px متل اللوحة
-  function resizeImage(file, max = 900) {
+  // صورة من الجهاز: منصغّرها لـ 1280px متل اللوحة
+  function resizeImage(file, max = 1280) {
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(file);
       const img = new Image();
@@ -347,6 +349,9 @@
       renderCats();
     } catch (err) { console.warn(err); }
   });
+  $('#catOpts').addEventListener('change', e => {
+    if (e.target.id === 'updImg') { updateCatImages = e.target.checked; renderCats(); }
+  });
   $('#cats').addEventListener('click', e => {
     const b = e.target.closest('[data-cat-rm]');
     if (!b) return;
@@ -369,11 +374,46 @@
   });
 
   /* ---------- الإدخال ---------- */
+  // نسخة صغيرة من الصورة (480px)، بنفس نوعها
+  function shrink(blob, max = 480) {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(blob);
+      const img = new Image();
+      img.onload = () => {
+        const r = Math.min(1, max / Math.max(img.width, img.height));
+        const c = document.createElement('canvas');
+        c.width = Math.round(img.width * r);
+        c.height = Math.round(img.height * r);
+        const ctx = c.getContext('2d');
+        if (blob.type === 'image/jpeg') { ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, c.width, c.height); }
+        ctx.drawImage(img, 0, 0, c.width, c.height);
+        URL.revokeObjectURL(url);
+        c.toBlob(b => (b ? resolve(b) : reject(new Error('bad image'))), blob.type, 0.8);
+      };
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('bad image')); };
+      img.src = url;
+    });
+  }
+
+  // صور الأصناف بترتفع بنسختين: الكبيرة متل ما هي، والصغيرة بنفس الاسم وآخرها -sm.
+  // paths فيها النسختين، لحتى إذا فشل الصنف ننضّف الاتنين
   async function upload(pic, folder) {
-    const path = `${folder}/${crypto.randomUUID()}.${pic.ext === 'jpeg' ? 'jpg' : pic.ext}`;
-    const { error } = await sb.storage.from(BUCKET).upload(path, pic.blob, { contentType: pic.blob.type, cacheControl: '31536000' });
+    const ext = pic.ext === 'jpeg' ? 'jpg' : pic.ext;
+    const id = crypto.randomUUID();
+    const path = `${folder}/${id}.${ext}`;
+    const opts = { contentType: pic.blob.type, cacheControl: '31536000' };
+    const { error } = await sb.storage.from(BUCKET).upload(path, pic.blob, opts);
     if (error) throw error;
-    return { path, url: sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl };
+    const paths = [path];
+    if (folder === 'products') {
+      const smallPath = `${folder}/${id}-sm.${ext}`;
+      try {
+        const res = await sb.storage.from(BUCKET).upload(smallPath, await shrink(pic.blob), opts);
+        if (res.error) throw res.error;
+      } catch (err) { await unupload(paths); throw err; }
+      paths.push(smallPath);
+    }
+    return { path, paths, url: sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl };
   }
   async function unupload(paths) {
     if (!paths.length) return;
@@ -416,7 +456,7 @@
     const ps = pack.products;
     const todo = ps.filter(ready);
     const report = {
-      catsAdded: 0, catsKept: 0, added: 0, exists: 0, skipped: 0, noPrice: 0, failed: [],
+      catsAdded: 0, catsKept: 0, catImages: 0, added: 0, exists: 0, skipped: 0, noPrice: 0, failed: [],
       demoProducts: 0, demoCats: 0, stories: 0, relinked: 0, keptCats: [],
     };
     report.skipped = ps.filter(p => p.skip).length;
@@ -451,8 +491,15 @@
           report.catsKept++;
           const patch = {};
           if (demo.on && DEMO_CATS.includes(found.name)) patch.sort_order = c.sort_order;
-          if (!found.image && c.pic) patch.image = (await upload(c.pic, 'categories')).url;
+          const old = found.image;
+          if (c.pic && (!old || updateCatImages)) patch.image = (await upload(c.pic, 'categories')).url;
           if (Object.keys(patch).length) await q(sb.from('categories').update(patch).eq('id', found.id));
+          if (patch.image && old) {
+            report.catImages++;
+            // الصورة القديمة بالسطل منحذفها، وصور img/ تبع الموقع منتركها
+            const marker = `/storage/v1/object/public/${BUCKET}/`;
+            if (old.includes(marker)) unupload([decodeURIComponent(old.split(marker)[1])]);
+          }
         } else {
           const image = c.pic ? (await upload(c.pic, 'categories')).url : null;
           const saved = await q(sb.from('categories').insert({ name: c.name, sort_order: c.sort_order, image }).select().single());
@@ -477,7 +524,7 @@
         const urls = [];
         for (const pic of p.pics) {
           const up = await upload(pic, 'products');
-          uploaded.push(up.path);
+          uploaded.push(...up.paths);
           urls.push(up.url);
         }
         const pieces = p.unit === 'كيلو' ? readNum(p.pieces) : null;
@@ -520,6 +567,7 @@
       line('انضاف من الأصناف', r.added),
       line('انضاف من الأقسام', r.catsAdded),
       line('أقسام موجودة من قبل', r.catsKept),
+      line('أقسام تحدّثت صورها', r.catImages),
       line('أصناف موجودة، ما تكررت', r.exists),
       line('أصناف ما انضافت لأن سعرها ناقص أو في رقم غلط', r.noPrice),
       line('أصناف متجاهلة', r.skipped),
@@ -550,7 +598,7 @@
       showReport(await runImport());
     } catch (err) {
       console.error(err);
-      showReport({ added: 0, catsAdded: 0, catsKept: 0, exists: 0, noPrice: 0, skipped: 0, demoProducts: 0, demoCats: 0, stories: 0, relinked: 0, keptCats: [], failed: [{ name: 'الإدخال وقف', why: err.message }] });
+      showReport({ added: 0, catsAdded: 0, catsKept: 0, catImages: 0, exists: 0, noPrice: 0, skipped: 0, demoProducts: 0, demoCats: 0, stories: 0, relinked: 0, keptCats: [], failed: [{ name: 'الإدخال وقف', why: err.message }] });
     }
   });
 

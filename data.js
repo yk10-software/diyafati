@@ -17,18 +17,34 @@ function formatPrice(n) {
   return Math.round(n).toLocaleString('en-US') + ' ' + CONFIG.currency;
 }
 
+// الكمية بالحكي: ربع كيلو، نص كيلو، تلات أرباع كيلو، 1 كيلو، كيلو وربع، 2 كيلو ونص...
 function formatQty(q, unit) {
   if (unit !== 'كيلو') return q + ' ' + unit;
-  const whole = Math.floor(q);
-  const half = q % 1 === 0.5;
-  if (whole === 0 && half) return 'نص كيلو';
-  if (whole === 1 && !half) return '1 كيلو';
-  if (whole === 1 && half) return 'كيلو ونص';
-  return whole + ' كيلو' + (half ? ' ونص' : '');
+  const quarters = Math.round(Number(q) * 4);
+  const whole = Math.floor(quarters / 4);
+  const part = ['', 'ربع', 'نص', 'تلات أرباع'][quarters % 4];
+  if (!whole) return part + ' كيلو';
+  if (!part) return whole + ' كيلو';
+  return (whole === 1 ? 'كيلو' : whole + ' كيلو') + ' و' + part;
 }
 
-function qtyStep(unit) {
-  return unit === 'كيلو' ? 0.5 : 1;
+// الخطوة بالكيلو: ربع إذا أقل كمية ربع، وإلا نص (نفس الحساب بـ place_order)
+function qtyStep(unit, minKilo) {
+  if (unit !== 'كيلو') return 1;
+  return Number(minKilo) < 0.5 ? 0.25 : 0.5;
+}
+
+// صورة الصنف الصغيرة (480px): نفس الاسم وآخرها -sm، بس لصور الأصناف بالتخزين.
+// الصور القديمة ما إلها نسخة صغيرة، فالـ <img> بيرجع للكبيرة لحاله (smallImg تحت).
+function smallImage(url) {
+  return /\/storage\/v1\/object\/public\/images\/products\//.test(url || '')
+    ? url.replace(/(\.[a-z0-9]+)(\?.*)?$/i, '-sm$1$2') : url;
+}
+// <img> بالنسخة الصغيرة، وإذا ما لقاها بياخد الكبيرة
+function smallImg(url, attrs = '') {
+  const small = smallImage(url);
+  const back = small !== url ? ` data-full="${escapeHTML(url)}" onerror="this.onerror=null;this.src=this.dataset.full"` : '';
+  return `<img src="${escapeHTML(small)}"${back} ${attrs}>`;
 }
 
 function escapeHTML(s) {

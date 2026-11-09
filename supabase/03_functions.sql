@@ -97,6 +97,7 @@ declare
   v_coupon  text := nullif(upper(btrim(coalesce(p_order->>'coupon_code', ''))), '');
   v_sched   timestamptz;
   v_qty     numeric;
+  v_step    numeric;
   v_price   bigint;
   v_line    bigint;
   v_subtotal bigint := 0;
@@ -183,8 +184,9 @@ begin
     v_qty := nullif(it->>'qty', '')::numeric;
     if v_qty is null or v_qty <= 0 or v_qty > 1000 then raise exception 'invalid_qty'; end if;
     if pr.unit = 'كيلو' then
-      -- خطوة نص كيلو، ومو أقل من الحد الأدنى
-      if v_qty * 2 <> trunc(v_qty * 2) or v_qty < s.min_kilo then raise exception 'invalid_qty'; end if;
+      -- الخطوة ربع كيلو إذا أقل كمية ربع، وإلا نص كيلو، ومو أقل من الحد الأدنى
+      v_step := case when s.min_kilo < 0.5 then 0.25 else 0.5 end;
+      if mod(v_qty, v_step) <> 0 or v_qty < s.min_kilo then raise exception 'invalid_qty'; end if;
     else
       if v_qty <> trunc(v_qty) then raise exception 'invalid_qty'; end if;
     end if;

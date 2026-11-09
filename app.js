@@ -6,6 +6,7 @@
   'use strict';
 
   const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)];
   const CART_KEY = 'diyafati_cart';
   const CUSTOMER_KEY = 'diyafati_customer';
   const SEEN_KEY = 'diyafati_seen_stories';
@@ -75,6 +76,9 @@
     // القصة اللي خلصت كل صورها (بعد أسبوع) ما بتبيّن
     stories = data.stories.filter(s => s.story_items.length);
     reviews = data.reviews || [];
+    // السلة المحفوظة: إذا تغيّرت أقل كمية أو الخطوة، منصلّح الكميات قبل ما توصل لـ place_order
+    cart = cart.map(l => { const p = findProduct(l.id); return p ? { ...l, qty: snapQty(l.qty, p.unit) } : l; });
+    ls.set(CART_KEY, cart);
     zones = data.zones || [];
     accounts = data.accounts || [];
   }
@@ -120,10 +124,11 @@
   }
 
   // صورة الصنف، وإذا ما إله صورة: كرت بهوية ضيافتي (قوس زبدي ولوغو)
-  function photo(src, alt = '') {
-    return src
-      ? `<img src="${escapeHTML(src)}" alt="${escapeHTML(alt)}" loading="lazy">`
-      : `<span class="ph"><img src="img/logo-mark.png" alt=""><small>${escapeHTML(alt)}</small></span>`;
+  // small: الكروت والصور الصغيرة بتاخد نسخة 480px، وصفحة الصنف الكبيرة
+  function photo(src, alt = '', small = false) {
+    if (!src) return `<span class="ph"><img src="img/logo-mark.png" alt=""><small>${escapeHTML(alt)}</small></span>`;
+    return small ? smallImg(src, `alt="${escapeHTML(alt)}" loading="lazy"`)
+      : `<img src="${escapeHTML(src)}" alt="${escapeHTML(alt)}" loading="lazy">`;
   }
 
   // السعر، ومعه القديم مشطوب إذا في خصم
@@ -183,7 +188,7 @@
       return `
       <article class="card${ok ? '' : ' off'}" data-open="${p.id}">
         <div class="photo">
-          ${photo(p.images[0], p.images[0] ? '' : p.name)}
+          ${photo(p.images[0], p.images[0] ? '' : p.name, true)}
           ${tag}
           ${ok ? `<button class="add" data-add="${p.id}" aria-label="أضف ${escapeHTML(p.name)} للسلة">${ICON.plus}</button>` : ''}
         </div>
@@ -205,6 +210,132 @@
   // النجوم للعرض: الممتلئة، وبعدها الفاضية
   function starsText(n) {
     return `<span class="stars-s" role="img" aria-label="${n} من 5">${'★'.repeat(n)}<i>${'★'.repeat(5 - n)}</i></span>`;
+  }
+
+  /* ---------- الشريط المميز ----------
+     الأصناف المميزة، وإذا ما في: اللي عليها خصم، وإذا ما في كمان: ما بيطلع.
+     بيقلب كل 4 ثواني، والتقليب بالإصبع من scroll-snap تبع المتصفح (خفيف).
+     بيوقف لحاله إذا: الزبون لمسه، أو فاتح صنف، أو الشريط مو بالشاشة، أو الصفحة بالخلفية،
+     أو الموبايل طالب «تقليل الحركة» (prefers-reduced-motion). */
+  const FEAT_MS = 4000;
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
+  const feat = { list: [], i: 0, timer: null, paused: false, held: false, seen: false, resume: null };
+
+  function featuredList() {
+    const ok = products.filter(p => canOrder(p) && p.images.length);
+    const chosen = ok.filter(p => p.featured);
+    const list = chosen.length ? chosen : ok.filter(p => effectivePrice(p) < p.price);
+    return list.slice(0, 8);
+  }
+
+  function featSlide(p, i, n) {
+    const now = effectivePrice(p);
+    const off = now < p.price ? Math.round((1 - now / p.price) * 100) : 0;
+    return `
+      <article class="feat-slide" role="group" aria-roledescription="شريحة" aria-label="${i + 1} من ${n}: ${escapeHTML(p.name)}" data-feat="${p.id}">
+        <div class="feat-art">
+          <span class="feat-ghost" aria-hidden="true"></span>
+          <span class="feat-img"><img src="${escapeHTML(p.images[0])}" alt="" ${i ? 'loading="lazy"' : ''} decoding="async"></span>
+        </div>
+        <div class="feat-txt">
+          <span class="feat-chip">${off ? `خصم ${off}%` : 'مميز'}</span>
+          <h2>${escapeHTML(p.name)}</h2>
+          <p class="price">${priceHTML(p)}</p>
+          <button class="btn feat-go" type="button" data-feat-go="${p.id}">اطلب</button>
+        </div>
+      </article>`;
+  }
+
+  function renderFeatured() {
+    const box = $('#feat');
+    const list = featuredList();
+    stopFeat();
+    feat.list = list;
+    feat.i = 0;
+    box.hidden = !list.length;
+    if (!list.length) { $('#featTrack').innerHTML = ''; return; }
+    $('#featTrack').innerHTML = list.map((p, i) => featSlide(p, i, list.length)).join('');
+    $('#featDots').innerHTML = list.length > 1 ? list.map((p, i) =>
+      `<button type="button" data-dot="${i}" aria-label="اعرض ${escapeHTML(p.name)}"><i></i></button>`).join('') : '';
+    $('#featPause').hidden = list.length < 2 || reduceMotion.matches;
+    box.classList.toggle('solo', list.length < 2);
+    markFeat(0);
+    playFeat();
+  }
+
+  function markFeat(i) {
+    feat.i = i;
+    $$('#featTrack .feat-slide').forEach((s, k) => s.classList.toggle('on', k === i));
+    $$('#featDots button').forEach((d, k) => {
+      d.classList.toggle('on', k === i);
+      d.setAttribute('aria-current', k === i ? 'true' : 'false');
+    });
+  }
+
+  function goFeat(i, smooth = true) {
+    const track = $('#featTrack');
+    const n = feat.list.length;
+    const k = (i + n) % n;
+    const rtl = getComputedStyle(track).direction === 'rtl';
+    track.scrollTo({ left: (rtl ? -1 : 1) * k * track.clientWidth, behavior: smooth && !reduceMotion.matches ? 'smooth' : 'auto' });
+    markFeat(k);
+  }
+
+  // التقليب لحاله: بس إذا الشريط ظاهر، والصفحة قدّام الزبون، وما في نافذة مفتوحة
+  const featCanRun = () => feat.list.length > 1 && !reduceMotion.matches && !feat.paused && !feat.held
+    && feat.seen && !document.hidden && !document.querySelector('.overlay, .story-view');
+  function playFeat() {
+    stopFeat();
+    const box = $('#feat');
+    box.classList.toggle('playing', featCanRun());
+    if (!featCanRun()) return;
+    feat.timer = setTimeout(() => { goFeat(feat.i + 1); playFeat(); }, FEAT_MS);
+  }
+  function stopFeat() {
+    clearTimeout(feat.timer);
+    feat.timer = null;
+  }
+
+  function bindFeatured() {
+    const box = $('#feat');
+    const track = $('#featTrack');
+    // الشريحة اللي صارت بالنص بعد السحب بالإصبع
+    let settle;
+    track.addEventListener('scroll', () => {
+      clearTimeout(settle);
+      settle = setTimeout(() => {
+        const k = Math.round(Math.abs(track.scrollLeft) / track.clientWidth);
+        if (k !== feat.i && feat.list[k]) { markFeat(k); playFeat(); }
+      }, 90);
+    }, { passive: true });
+    // لمس: منوقف، ومنرجع نكمّل بعد شوي
+    const hold = () => { feat.held = true; clearTimeout(feat.resume); stopFeat(); box.classList.remove('playing'); };
+    const release = () => { clearTimeout(feat.resume); feat.resume = setTimeout(() => { feat.held = false; playFeat(); }, 6000); };
+    track.addEventListener('pointerdown', hold, { passive: true });
+    track.addEventListener('pointerup', release, { passive: true });
+    track.addEventListener('pointercancel', release, { passive: true });
+    box.addEventListener('focusin', hold);
+    box.addEventListener('focusout', release);
+    box.addEventListener('click', e => {
+      const dot = e.target.closest('[data-dot]');
+      if (dot) { goFeat(Number(dot.dataset.dot)); playFeat(); return; }
+      if (e.target.closest('#featPause')) {
+        feat.paused = !feat.paused;
+        $('#featPause').setAttribute('aria-pressed', String(feat.paused));
+        $('#featPause').setAttribute('aria-label', feat.paused ? 'كمّل التقليب' : 'وقّف التقليب');
+        playFeat();
+        return;
+      }
+      const slide = e.target.closest('[data-feat]');
+      if (slide) { stopFeat(); openProduct(Number(slide.dataset.feat)); }
+    });
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(([e]) => { feat.seen = e.isIntersecting; playFeat(); }, { threshold: 0.5 }).observe(box);
+    } else feat.seen = true;
+    document.addEventListener('visibilitychange', playFeat);
+    reduceMotion.addEventListener?.('change', () => { renderFeatured(); });
+    // لما تتسكّر نافذة الصنف، منرجع نقلب
+    new MutationObserver(() => { if (!feat.timer) playFeat(); }).observe(document.body, { childList: true });
   }
 
   // آراء الزباين: بس اللي اختارها صاحب المحل. الاسم بيوصل مختصر من السيرفر (سارة م.)
@@ -261,6 +392,7 @@
     renderGrid();
     renderStories();
     renderReviews();
+    renderFeatured();
     updateCartUI();
   }
 
@@ -333,7 +465,10 @@
 
   /* ---------- صفحة الصنف ---------- */
   // أقل كمية: بالكيلو حسب إعدادات المحل (نص كيلو أو أكتر)، وبالقطعة وحدة
-  const minQty = unit => unit === 'كيلو' ? Math.max(0.5, Number(settings.min_kilo) || 0.5) : 1;
+  const minQty = unit => unit === 'كيلو' ? Math.max(0.25, Number(settings.min_kilo) || 0.5) : 1;
+  const stepOf = unit => qtyStep(unit, minQty(unit));
+  // بيرجّع الكمية لأقرب قيمة مسموحة لفوق (مثلاً إذا المحل غيّر أقل كمية)
+  const snapQty = (q, unit) => Math.min(100, Math.max(minQty(unit), Math.ceil(Number(q) / stepOf(unit) - 1e-9) * stepOf(unit)));
 
   function stepperHTML(qty, unit, small) {
     return `
@@ -343,7 +478,7 @@
         <button type="button" data-step="-1" aria-label="تنقيص" ${qty <= minQty(unit) ? 'disabled' : ''}>−</button>
       </div>`;
   }
-  const stepQty = (qty, unit, dir) => Math.min(100, Math.max(minQty(unit), qty + qtyStep(unit) * dir));
+  const stepQty = (qty, unit, dir) => Math.min(100, Math.max(minQty(unit), Math.round((qty + stepOf(unit) * dir) / stepOf(unit)) * stepOf(unit)));
 
   function openProduct(id) {
     const p = findProduct(id);
@@ -455,7 +590,7 @@
         const p = findProduct(l.id);
         return `
           <div class="c-item" data-line="${i}">
-            ${photo(p.images[0])}
+            ${photo(p.images[0], '', true)}
             <div>
               <h4>${escapeHTML(p.name)}</h4>
               ${l.note ? `<p class="note">${escapeHTML(l.note)}</p>` : ''}
@@ -935,7 +1070,7 @@
   const deliveryLine = o => o.status === 'cancelled' ? 'تواصل معنا إذا عندك سؤال'
     : o.delivery_mode === 'scheduled' ? `بيوصلك ${whenLabel(o.scheduled_at)}` : 'بأقرب وقت';
   const payLine = o => ({ cash: 'كاش عند الاستلام', shamcash: 'شام كاش', bank: 'تحويل بنكي' }[o.payment_method]);
-  const thumbs = o => `<div class="o-thumbs">${o.items.slice(0, 4).map(i => photo(i.image)).join('')}</div>`;
+  const thumbs = o => `<div class="o-thumbs">${o.items.slice(0, 4).map(i => photo(i.image, '', true)).join('')}</div>`;
 
   function orderTitle(o) {
     const first = o.items[0];
@@ -1136,7 +1271,7 @@
     o.items.forEach(i => {
       const p = i.product_id ? findProduct(i.product_id) : null;
       if (!canOrder(p)) return;
-      addToCart(p.id, Math.max(Number(i.qty), minQty(p.unit)), i.note || '');
+      addToCart(p.id, snapQty(i.qty, p.unit), i.note || '');
       added++;
     });
     if (!added) { toast('أصناف هالطلب مو متوفرة هلق'); return; }
@@ -1250,6 +1385,7 @@
 
   /* ---------- الأحداث ---------- */
   function bind() {
+    bindFeatured();
     $('#chips').addEventListener('click', e => {
       const b = e.target.closest('[data-cat]');
       if (!b) return;

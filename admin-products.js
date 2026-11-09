@@ -86,7 +86,7 @@
       <div class="a-row${p.available && !p.hidden ? '' : ' off'}">
         ${A.thumb(p.images[0])}
         <div class="a-info">
-          <b>${escapeHTML(p.name)}${!p.available ? '<span class="tag">خلص</span>' : ''}${p.hidden ? '<span class="tag muted">مخفي</span>' : ''}</b>
+          <b>${escapeHTML(p.name)}${!p.available ? '<span class="tag">خلص</span>' : ''}${p.hidden ? '<span class="tag muted">مخفي</span>' : ''}${p.featured ? '<span class="tag">مميز</span>' : ''}</b>
           <span>${escapeHTML(catName(p.category_id))}</span>
           <span class="price">${effectivePrice(p) !== p.price ? `<s>${formatPrice(p.price)}</s> ` : ''}${formatPrice(effectivePrice(p))} <small>/ ${escapeHTML(p.unit)}</small></span>
         </div>
@@ -150,17 +150,16 @@
             <select name="unit">${UNITS.map(u => `<option ${u === p.unit ? 'selected' : ''}>${u}</option>`).join('')}</select>
           </label>
         </div>
-        <div class="two">
-          <label class="field" data-f="sale">
-            <span>سعر الخصم <small>(اختياري)</small></span>
-            <input name="sale" type="text" inputmode="numeric" dir="ltr" autocomplete="off" value="${p.sale_price ?? ''}">
-            <span class="err">لازم يكون أقل من السعر.</span>
-          </label>
-          <label class="field">
-            <span>آخر يوم للخصم</span>
-            <select name="sale_until">${A.expiryOptions(p.sale_until)}</select>
-          </label>
-        </div>
+        <!-- الخصم وتاريخه بسطرين: القائمة بعرض كامل لحتى يبيّن التاريخ كله عالموبايل -->
+        <label class="field" data-f="sale">
+          <span>سعر الخصم <small>(اختياري)</small></span>
+          <input name="sale" type="text" inputmode="numeric" dir="ltr" autocomplete="off" value="${p.sale_price ?? ''}">
+          <span class="err">لازم يكون أقل من السعر.</span>
+        </label>
+        <label class="field">
+          <span>آخر يوم للخصم</span>
+          <select name="sale_until">${A.expiryOptions(p.sale_until)}</select>
+        </label>
         <label class="field" data-f="pieces" id="piecesField" ${p.unit === 'كيلو' ? '' : 'hidden'}>
           <span>عدد الحبات بالكيلو <small>(اختياري)</small></span>
           <input name="pieces" type="text" inputmode="numeric" dir="ltr" autocomplete="off" value="${p.pieces_per_kg ?? ''}">
@@ -179,6 +178,7 @@
         </label>
         <label class="check"><input type="checkbox" name="available" ${p.available ? 'checked' : ''}> متوفر (إذا لأ، بيبيّن للزباين «خلص»)</label>
         <label class="check"><input type="checkbox" name="hidden" ${p.hidden ? 'checked' : ''}> مخفي عن الزباين بالكامل</label>
+        <label class="check"><input type="checkbox" name="featured" ${p.featured ? 'checked' : ''}> مميز: بيطلع بالشريط فوق الموقع</label>
         <label class="check"><input type="checkbox" name="custom" ${p.custom_note_label ? 'checked' : ''}> الزبون بيكتب تفاصيل خاصة (متل نص الطباعة)</label>
         <label class="field" id="noteField" ${p.custom_note_label ? '' : 'hidden'}>
           <span>السؤال اللي بيبيّن للزبون</span>
@@ -210,8 +210,9 @@
       if (e.target.id !== 'imgInput') return;
       for (const file of e.target.files) {
         try {
-          const blob = await A.resizeImage(file);
-          imgs.push({ blob, preview: URL.createObjectURL(blob) });
+          // الكبيرة 1280px للصفحة، والصغيرة 480px للكروت
+          const [blob, small] = await Promise.all([A.resizeImage(file), A.resizeImage(file, 480)]);
+          imgs.push({ blob, small, preview: URL.createObjectURL(blob) });
         } catch (err) {
           toast('ما قدرنا نفتح وحدة من الصور. جرّب صورة تانية.');
         }
@@ -245,7 +246,7 @@
         const urls = [];
         for (const im of imgs) {
           if (im.url) { urls.push(im.url); continue; }
-          const url = await A.uploadImage(im.blob, 'products');
+          const url = await A.uploadImage(im.blob, 'products', im.small);
           uploaded.push(url);
           urls.push(url);
         }
@@ -253,6 +254,7 @@
           name,
           price: Math.round(price),
           sale_price: sale,
+          featured: f.featured.checked,
           pieces_per_kg: pieces,
           sale_until: sale === null ? null : A.endOfDay(f.sale_until.value),
           unit: f.unit.value,

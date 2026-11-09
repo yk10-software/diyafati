@@ -119,6 +119,54 @@ button { cursor: pointer; }
 .search input::placeholder { color: var(--muted); }
 .search svg { position: absolute; right: 14px; top: 13px; width: 20px; height: 20px; color: var(--muted); pointer-events: none; }
 
+/* ---------- الشريط المميز ----------
+   قوس كبير بيطلع من تحت لفوق متل باب بينفتح، ووراه قوس بخط رفيع بيتزحلق لمحله،
+   والصورة بتقرّب شوي على مهل. كله transform و clip-path و opacity لحتى يضل خفيف. */
+.feat { padding: 2px 16px 14px; }
+.feat-track { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; overscroll-behavior-x: contain; }
+.feat-track::-webkit-scrollbar { display: none; }
+.feat-slide { flex: 0 0 100%; scroll-snap-align: center; scroll-snap-stop: always; display: grid; grid-template-columns: 46% 1fr; gap: 14px; align-items: center; padding: 14px 14px 14px 12px; border-radius: 26px; background: var(--sugar); cursor: pointer; }
+.feat-art { position: relative; aspect-ratio: 4 / 5; }
+.feat-ghost { position: absolute; inset: 0; border: 1.5px solid var(--cocoa); border-radius: var(--arch); transform: translate(-7px, -7px); }
+.feat-img { position: absolute; inset: 0; border-radius: var(--arch); overflow: hidden; background: var(--photo); }
+.feat-img img { width: 100%; height: 100%; object-fit: cover; }
+.feat-txt { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.feat-chip { padding: 2px 10px; border-radius: 10px; background: var(--butter); color: var(--cocoa); font-size: 12px; font-weight: 600; }
+.feat-txt h2 { margin: 0; font-family: var(--f-display); font-weight: 500; font-size: 22px; line-height: 1.3; color: var(--cocoa); display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.feat-txt .price { margin: 0; }
+.feat-go { width: auto; height: 42px; margin-top: 4px; padding: 0 22px; font-size: 15px; }
+.feat-foot { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 10px; min-height: 18px; }
+.feat-dots { display: flex; gap: 6px; }
+.feat-dots button { width: 24px; height: 18px; padding: 0; border: 0; background: none; display: grid; place-items: center; cursor: pointer; }
+.feat-dots i { position: relative; display: block; width: 7px; height: 7px; border-radius: 4px; background: rgba(93, 62, 34, .25); overflow: hidden; transition: width .3s; }
+.feat-dots .on i { width: 22px; }
+.feat-dots .on i::after { content: ''; position: absolute; inset: 0; background: var(--cocoa); }
+.feat-pause { width: 26px; height: 26px; padding: 0; border: 1.5px solid var(--cocoa); border-radius: 50%; background: none; cursor: pointer; position: relative; }
+.feat-pause::before, .feat-pause::after { content: ''; position: absolute; top: 7px; width: 3px; height: 9px; border-radius: 1px; background: var(--cocoa); }
+.feat-pause::before { right: 8px; }
+.feat-pause::after { left: 8px; }
+.feat-pause[aria-pressed="true"]::before { right: 9px; top: 6px; width: 0; height: 0; border-radius: 0; background: none; border-style: solid; border-width: 6px 8px 6px 0; border-color: transparent var(--cocoa) transparent transparent; }
+.feat-pause[aria-pressed="true"]::after { display: none; }
+.feat.solo .feat-foot { display: none; }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* لما الشريحة تصير قدّام: القوس بيطلع، والقوس الرفيع بيتزحلق لمحله، والحكي بيطلع ورا بعض */
+  .feat-slide.on .feat-img { animation: feat-rise .75s cubic-bezier(.2, .8, .2, 1) both; }
+  .feat-slide.on .feat-img img { animation: feat-zoom 4.6s ease-out both; }
+  .feat-slide.on .feat-ghost { animation: feat-ghost .9s cubic-bezier(.2, .8, .2, 1) both; }
+  .feat-slide.on .feat-txt > * { animation: feat-up .55s cubic-bezier(.2, .8, .2, 1) both; }
+  .feat-slide.on .feat-txt > :nth-child(2) { animation-delay: .07s; }
+  .feat-slide.on .feat-txt > :nth-child(3) { animation-delay: .14s; }
+  .feat-slide.on .feat-txt > :nth-child(4) { animation-delay: .21s; }
+  /* النقطة الحالية بتتعبّى مع الوقت، لحتى يبيّن إمتى بيقلب */
+  .feat.playing .feat-dots .on i::after { transform-origin: right; animation: feat-fill 4s linear both; }
+}
+@keyframes feat-rise { from { clip-path: inset(100% 0 0 0 round 50% 50% 12px 12px / 40% 40% 12px 12px); } to { clip-path: inset(0 0 0 0 round 50% 50% 12px 12px / 40% 40% 12px 12px); } }
+@keyframes feat-zoom { from { transform: scale(1.12); } to { transform: scale(1); } }
+@keyframes feat-ghost { from { transform: translate(10px, 10px); opacity: 0; } to { transform: translate(-7px, -7px); opacity: 1; } }
+@keyframes feat-up { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+@keyframes feat-fill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+
 /* الأقسام: أقواس كبيرة مليانة، والقصص فوقها أقواس صغيرة بإطار */
 .cats { display: flex; gap: 10px; overflow-x: auto; padding: 16px 16px 6px; scrollbar-width: none; }
 .cats::-webkit-scrollbar { display: none; }

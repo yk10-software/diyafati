@@ -22,7 +22,7 @@ create table if not exists public.settings (
   close_time         time    not null default '22:00',
   instagram_url      text    not null default 'https://www.instagram.com/diyafati_hama_2',
   facebook_url       text    not null default 'https://www.facebook.com/share/1E6URHXfHx/',
-  min_kilo           numeric(5,1) not null default 0.5,  -- أقل كمية لصنف بالكيلو
+  min_kilo           numeric(5,2) not null default 0.5,  -- أقل كمية لصنف بالكيلو
   scheduled_enabled  boolean not null default true,      -- «استقبال طلبات بموعد»
   schedule_max_days  int     not null default 30,        -- لحد كم يوم لقدام
   cash_enabled       boolean not null default true,      -- كاش عند الاستلام
@@ -55,6 +55,7 @@ create table if not exists public.products (
                     check (unit in ('كيلو', 'قطعة', 'علبة', 'باقة')),
   images            text[]  not null default '{}',       -- روابط أو مسارات الصور
   pieces_per_kg     int check (pieces_per_kg > 0),       -- عدد الحبات بالكيلو
+  featured          boolean not null default false,      -- بيطلع بالشريط فوق الموقع
   custom_note_label text,                                -- متل «شو بدك ينطبع على الملبس؟»
   available         boolean not null default true,       -- false = «خلص» بس بيبين
   hidden            boolean not null default false,      -- true = ما بيبين للزباين أبداً
@@ -167,7 +168,7 @@ create table if not exists public.order_items (
   name        text   not null,                  -- نسخ وقت الطلب، لو انحذف الصنف بعدين
   image       text,
   unit        text   not null,
-  qty         numeric(7,1) not null check (qty > 0),
+  qty         numeric(7,2) not null check (qty > 0),
   unit_price  bigint not null,
   line_total  bigint not null,
   note        text   not null default ''        -- نص الطباعة للملبس

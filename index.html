@@ -13,7 +13,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="ضيافتي">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <link rel="stylesheet" href="styles.css?v=19">
+  <link rel="stylesheet" href="styles.css?v=21">
 </head>
 <body>
   <div class="app store">
@@ -34,6 +34,13 @@
         </div>
       </header>
       <p class="tagline">ضيافة وأزهار لمناسباتكم</p>
+      <section class="feat" id="feat" aria-roledescription="carousel" aria-label="أصناف مميزة" hidden>
+        <div class="feat-track" id="featTrack"></div>
+        <div class="feat-foot">
+          <div class="feat-dots" id="featDots"></div>
+          <button class="feat-pause" id="featPause" type="button" aria-label="وقّف التقليب" aria-pressed="false"></button>
+        </div>
+      </section>
       <nav class="stories" id="stories" aria-label="قصص من شغلنا"></nav>
     </div>
 
@@ -90,9 +97,9 @@
     <span id="cartBarTotal"></span>
   </button>
 
-  <script src="config.js?v=19"></script>
-  <script src="api.js?v=19"></script>
-  <script src="data.js?v=19"></script>
-  <script src="app.js?v=19"></script>
+  <script src="config.js?v=21"></script>
+  <script src="api.js?v=21"></script>
+  <script src="data.js?v=21"></script>
+  <script src="app.js?v=21"></script>
 </body>
 </html>

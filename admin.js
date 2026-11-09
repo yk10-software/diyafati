@@ -191,10 +191,10 @@ const A = (() => {
   const endOfDay = day => (day ? `${day}T23:59:59+03:00` : null);
 
   /* ---------- الصور ----------
-     منصغّر الصورة بالمتصفح لـ 900px قبل الرفع، وبترتفع على سطل images. */
+     منصغّر الصورة بالمتصفح لـ 1280px قبل الرفع، وبترتفع على سطل images. */
   const BUCKET = 'images';
 
-  function resizeImage(file, max = 900) {
+  function resizeImage(file, max = 1280) {
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(file);
       const img = new Image();
@@ -215,12 +215,18 @@ const A = (() => {
     });
   }
 
-  async function uploadImage(blob, folder) {
+  // small: نسخة 480px بنفس الاسم وآخرها -sm (لصور الأصناف). إذا فشلت، منشيل الكبيرة كمان
+  async function uploadImage(blob, folder, small) {
     // randomUUID بتشتغل بس على https أو localhost، فإذا فتحت اللوحة من الموبايل على IP اللابتوب منستعمل البديل
     const id = crypto.randomUUID ? crypto.randomUUID()
       : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
     const path = `${folder}/${id}.jpg`;
-    await db(sb.storage.from(BUCKET).upload(path, blob, { contentType: 'image/jpeg', cacheControl: '31536000' }));
+    const opts = { contentType: 'image/jpeg', cacheControl: '31536000' };
+    await db(sb.storage.from(BUCKET).upload(path, blob, opts));
+    if (small) {
+      try { await db(sb.storage.from(BUCKET).upload(`${folder}/${id}-sm.jpg`, small, opts)); }
+      catch (err) { await sb.storage.from(BUCKET).remove([path]); throw err; }
+    }
     return sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
   }
 
@@ -228,6 +234,8 @@ const A = (() => {
   async function removeImages(urls) {
     const marker = `/storage/v1/object/public/${BUCKET}/`;
     const paths = urls.filter(u => u && u.includes(marker)).map(u => decodeURIComponent(u.split(marker)[1]));
+    // صور الأصناف إلها نسخة صغيرة، منحذفها معها (إذا مو موجودة، الحذف ما بيعطي خطأ)
+    paths.push(...paths.filter(p => p.startsWith('products/')).map(p => p.replace(/(\.[a-z0-9]+)$/i, '-sm$1')));
     if (!paths.length) return;
     try { await db(sb.storage.from(BUCKET).remove(paths)); }
     catch (err) { console.warn('ما قدرنا نحذف صور قديمة', err); }   // مو مشكلة كبيرة، بتضل بالسطل
@@ -236,7 +244,7 @@ const A = (() => {
   // الصنف اللي ما إله صورة: كرت بهوية ضيافتي (قوس زبدي ولوغو)
   function thumb(src, cls = '') {
     return src
-      ? `<img class="${cls}" src="${escapeHTML(src)}" alt="" loading="lazy">`
+      ? smallImg(src, `class="${cls}" alt="" loading="lazy"`)
       : `<span class="ph ${cls}"><img src="img/logo-mark.png" alt=""></span>`;
   }
 

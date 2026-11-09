@@ -222,9 +222,10 @@
     facebook_url: linkField('رابط فيسبوك', 'https://www.facebook.com/...'),
     min_kilo: {
       title: 'أقل كمية للطلب (بالكيلو)',
-      input: v => `<select name="v">${[0.5, 1, 1.5, 2, 3, 5].map(q =>
+      // إذا القيمة المحفوظة مو من الخيارات، منضيفها لحتى ما تتغيّر بلا قصد
+      input: v => `<select name="v">${[...new Set([0.25, 0.5, 1, Number(v)])].sort((a, b) => a - b).map(q =>
         `<option value="${q}" ${Number(v) === q ? 'selected' : ''}>${formatQty(q, 'كيلو')}</option>`).join('')}</select>`,
-      hint: 'أقل كمية بيقدر الزبون يطلبها من صنف بالكيلو.',
+      hint: 'أقل كمية بيقدر الزبون يطلبها من صنف بالكيلو. مع ربع كيلو بيزيد ربع ربع، وغير هيك نص نص.',
       parse: v => Number(v),
     },
     schedule_max_days: {

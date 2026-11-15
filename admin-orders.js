@@ -39,7 +39,10 @@
   const clock = iso => new Date(iso).toLocaleTimeString('ar-SY-u-nu-latn', { hour: 'numeric', minute: '2-digit', timeZone: TZ });
   const delivery = o => o.delivery_mode === 'scheduled' ? `${when(o.scheduled_at)}، ${clock(o.scheduled_at)}` : 'بأقرب وقت';
   const chip = s => `<span class="st-chip ${STATUS[s].cls}">${STATUS[s].label}</span>`;
-  const items = o => A.countAr(o.order_items.length, 'صنف واحد', 'صنفين', 'أصناف');
+  // اللي جوا البوكس ما بينعدّ صنف لحاله
+  const items = o => A.countAr(o.order_items.filter(i => !i.in_box).length, 'صنف واحد', 'صنفين', 'أصناف');
+  // بترتيب الطلب: البوكس وبعده اللي جواه
+  const lines = o => [...o.order_items].sort((a, b) => a.id - b.id);
   const payShort = o => PAY[o.payment_method] || '';
 
   // رقم الزبون لرابط واتساب: 0944... ← 963944...
@@ -132,10 +135,10 @@
       </div>
 
       <div class="a-card">
-        ${o.order_items.map(i => `
-          <div class="o-item">
-            ${A.thumb(i.image)}
-            <div><b>${escapeHTML(i.name)}</b><span>${formatQty(Number(i.qty), i.unit)}</span></div>
+        ${lines(o).map(i => `
+          <div class="o-item${i.in_box ? ' in-box' : ''}">
+            ${i.in_box ? '<span class="o-in" aria-hidden="true"></span>' : A.thumb(i.image)}
+            <div><b>${escapeHTML(i.name)}</b><span>${i.in_box ? 'جوا البوكس، ' : ''}${formatQty(Number(i.qty), i.unit)}${i.box_no && !i.in_box ? '، معبّى' : ''}</span></div>
             <span class="price">${formatPrice(i.line_total)}</span>
           </div>
           ${i.note ? `<p class="o-note">نص الطباعة: ${escapeHTML(i.note)}</p>` : ''}`).join('')}

@@ -64,7 +64,8 @@
     }
     list.innerHTML = state.cats.map(c => {
       const n = countIn(c.id);
-      const tags = (c.hidden ? '<span class="tag muted">مخفي</span>' : '') + (c.coming_soon ? '<span class="tag">قريباً</span>' : '');
+      const tags = (c.hidden ? '<span class="tag muted">مخفي</span>' : '') + (c.coming_soon ? '<span class="tag">قريباً</span>' : '')
+        + (c.is_boxes ? '<span class="tag muted">بوكسات بتتعبّى</span>' : '');
       return `
         <div class="crow${c.id === fresh ? ' fresh' : ''}" data-id="${c.id}">
           <button class="grip" type="button" aria-label="رتّب «${escapeHTML(c.name)}» (اسحب أو استعمل الأسهم)">${icon('grip')}</button>
@@ -159,6 +160,9 @@
         </label>
         <label class="check"><input type="checkbox" name="hide" ${c.hidden ? 'checked' : ''}> مخفي عن الزباين (هو وأصنافه)</label>
         <label class="check"><input type="checkbox" name="soon" ${c.coming_soon ? 'checked' : ''}> «قريباً»: بيبيّن بس ما بينطلب منه</label>
+        <p class="field" style="margin:16px 0 4px"><span>البوكس المعبّى</span></p>
+        <label class="check"><input type="checkbox" name="boxes" ${c.is_boxes ? 'checked' : ''}> أصنافه بوكسات، والزبون بيقدر يطلبها معبّاية</label>
+        <label class="check"><input type="checkbox" name="fill" ${c.box_fill ? 'checked' : ''}> أصنافه بتطلع للزبون وقت يعبّي البوكس (اللي بالكيلو بس)</label>
         <button class="btn" type="submit" style="margin-top:18px">حفظ</button>
       </form>
     `);
@@ -195,7 +199,10 @@
         if (image && image.blob) uploaded = await A.uploadImage(image.blob, 'categories');
         const url = uploaded || (image ? image.url : null);
         const saved = await db(sb.from('categories')
-          .update({ name: f.cname.value.trim(), hidden: f.hide.checked, coming_soon: f.soon.checked, image: url })
+          .update({
+            name: f.cname.value.trim(), hidden: f.hide.checked, coming_soon: f.soon.checked, image: url,
+            is_boxes: f.boxes.checked, box_fill: f.fill.checked,
+          })
           .eq('id', id).select().single());
         state.cats[state.cats.findIndex(x => x.id === id)] = saved;
         if (c.image && c.image !== url) A.removeImages([c.image]);

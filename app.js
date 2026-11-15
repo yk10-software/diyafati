@@ -35,6 +35,7 @@
     bank: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 9.5 12 4l9 5.5H3Z"/><path d="M5 10v7M9.5 10v7M14.5 10v7M19 10v7M3.5 20h17"/></svg>',
     soundOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4Z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/></svg>',
     soundOn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4Z"/><path d="M15.5 9a4.5 4.5 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/></svg>',
+    search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
     addSquare: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8.5v7M8.5 12h7"/></svg>',
   };
 
@@ -49,7 +50,7 @@
   let reviews = [];   // اللي اختارها صاحب المحل للعرض
   let zones = [];                            // مناطق التوصيل
   let accounts = [];                         // حسابات شام كاش والبنوك
-  let cart = ls.get(CART_KEY, []);           // [{ id, qty, note }]
+  let cart = ls.get(CART_KEY, []);           // [{ id, qty, note, fill? }]  fill: [{ id, qty }] = جوا البوكس
   let activeCat = 'all';
   let query = '';
 
@@ -60,12 +61,28 @@
   const isSoon = p => { const c = findCat(p.category_id); return !!(c && c.coming_soon); };
   const canOrder = p => p && p.available && !isSoon(p);
 
+  /* البوكس المعبّى (18_box_fill.sql): أصناف قسم is_boxes بتنطلب فارغة أو معبّاية،
+     واللي جواها من أقسام box_fill وبالكيلو، من ربع كيلو وطالع والخطوة ربع.
+     place_order بيتأكد من كل هالشي من جديد. */
+  const FILL_MIN = 0.25;
+  const isBox = p => { const c = p && findCat(p.category_id); return !!(c && c.is_boxes); };
+  const canFill = p => { const c = p && findCat(p.category_id); return !!(c && c.box_fill && p.unit === 'كيلو' && canOrder(p)); };
+  const snapFill = q => Math.min(50, Math.max(FILL_MIN, Math.round(Number(q) / FILL_MIN) * FILL_MIN));
+  const fillTotal = fill => (fill || []).reduce((sum, f) => { const p = findProduct(f.id); return p ? sum + effectivePrice(p) * f.qty : sum; }, 0);
+  const lineTotal = l => { const p = findProduct(l.id); return p ? effectivePrice(p) * l.qty + fillTotal(l.fill) : 0; };
+
   function cleanCart() {
     cart = cart.filter(l => canOrder(findProduct(l.id)));
+    // اللي ما عاد بينحط جوا البوكس بينشال، وإذا فضي البوكس بيرجع فارغ
+    cart.forEach(l => {
+      if (!l.fill) return;
+      l.fill = l.fill.filter(f => canFill(findProduct(f.id)));
+      if (!l.fill.length || !isBox(findProduct(l.id))) delete l.fill;
+    });
   }
   function saveCart() { ls.set(CART_KEY, cart); updateCartUI(); }
   function cartTotal() {
-    return cart.reduce((sum, l) => { const p = findProduct(l.id); return p ? sum + effectivePrice(p) * l.qty : sum; }, 0);
+    return cart.reduce((sum, l) => sum + lineTotal(l), 0);
   }
 
   function applyCatalog(data) {
@@ -79,7 +96,12 @@
     stories = data.stories.filter(s => s.story_items.length);
     reviews = data.reviews || [];
     // السلة المحفوظة: إذا تغيّرت أقل كمية أو الخطوة، منصلّح الكميات قبل ما توصل لـ place_order
-    cart = cart.map(l => { const p = findProduct(l.id); return p ? { ...l, qty: snapQty(l.qty, p.unit) } : l; });
+    cart = cart.map(l => {
+      const p = findProduct(l.id);
+      if (!p) return l;
+      if (l.fill) return { ...l, qty: 1, fill: l.fill.map(f => ({ ...f, qty: snapFill(f.qty) })) };
+      return { ...l, qty: snapQty(l.qty, p.unit) };
+    });
     ls.set(CART_KEY, cart);
     zones = data.zones || [];
     accounts = data.accounts || [];
@@ -489,8 +511,14 @@
     const price = effectivePrice(p);
     const ok = canOrder(p);
     const imgs = p.images.length ? p.images : [null];
+    // البوكس: الزبون بيختار فارغ ولا معبّى، والمعبّى كميته علبة وحدة
+    const boxy = ok && isBox(p) && products.some(canFill);
+    let filled = false;
+    let fill = [];   // [{ id, qty }]
+    const total = () => (filled ? price + fillTotal(fill) : price * qty);
 
     const sheet = openSheet(`
+      <div id="pMain">
       <div class="sheet-head">
         <span class="price"><small>${escapeHTML(catName(p.category_id))}</small></span>
         <button class="close" aria-label="إغلاق">×</button>
@@ -506,6 +534,13 @@
           <span>${escapeHTML(p.custom_note_label)}</span>
           <input id="pNote" maxlength="120" placeholder="مثلاً: أهلاً بـ «جود» 2026">
         </label>` : ''}
+      ${boxy ? `
+        <p class="box-q">كيف بدك ياه؟</p>
+        <div class="seg box-seg" role="group" aria-label="البوكس فارغ ولا معبّى">
+          <button type="button" data-fillmode="0" aria-pressed="true">فارغ<small>بدون تعبئة</small></button>
+          <button type="button" data-fillmode="1" aria-pressed="false">معبّى<small>باللي بتختاره</small></button>
+        </div>
+        <div id="fillBox" hidden></div>` : ''}
       <div class="buy">
         ${ok ? `
         <div class="buy-row">
@@ -515,6 +550,8 @@
         <button class="btn" id="pAdd">أضف للسلة</button>` : `
         <button class="btn" disabled>${isSoon(p) ? 'قريباً' : 'خلص هلق، رجّع شوفه بعدين'}</button>`}
       </div>
+      </div>
+      ${boxy ? '<div id="pFill" hidden></div>' : ''}
     `, { label: p.name });
     if (!ok) return;
 
@@ -528,25 +565,181 @@
 
     $('#qtyBox', sheet).addEventListener('click', e => {
       const b = e.target.closest('[data-step]');
-      if (!b) return;
+      if (!b || filled) return;
       qty = stepQty(qty, p.unit, Number(b.dataset.step));
-      $('#qtyBox', sheet).innerHTML = stepperHTML(qty, p.unit);
-      $('#pTotal', sheet).textContent = formatPrice(price * qty);
+      drawQty();
+    });
+
+    function drawQty() {
+      $('#qtyBox', sheet).innerHTML = filled ? '<span class="c-one">علبة وحدة</span>' : stepperHTML(qty, p.unit);
+      $('#pTotal', sheet).textContent = formatPrice(total());
+      $('#pAdd', sheet).textContent = filled && !fill.length ? 'اختار شو بدك جوا البوكس' : 'أضف للسلة';
+    }
+
+    /* ---------- البوكس المعبّى ----------
+       شاشة الاختيار بنفس النافذة (pFill)، لحتى ما يضيع اختيار الزبون. */
+    let fillCat = 'all';
+    let fillQuery = '';
+    const fillCats = () => categories.filter(c => c.box_fill && products.some(x => x.category_id === c.id && canFill(x)));
+    const fillStepper = q => `
+      <div class="stepper small">
+        <button type="button" data-fs="1" aria-label="زيادة">+</button>
+        <output>${formatQty(q, 'كيلو')}</output>
+        <button type="button" data-fs="-1" aria-label="${q <= FILL_MIN ? 'شيل' : 'تنقيص'}">−</button>
+      </div>`;
+    const fillRow = x => {
+      const f = fill.find(y => y.id === x.id);
+      return `
+        <div class="fill-row${f ? ' on' : ''}" data-fid="${x.id}">
+          ${photo(x.images[0], '', true)}
+          <div><h4>${escapeHTML(x.name)}</h4><span class="price">${formatPrice(effectivePrice(x))} <small>/ كيلو</small></span></div>
+          ${f ? fillStepper(f.qty) : '<button type="button" class="fill-add" data-fadd>أضف</button>'}
+        </div>`;
+    };
+
+    function drawFillBox() {
+      const box = $('#fillBox', sheet);
+      box.hidden = !filled;
+      if (!filled) return;
+      box.innerHTML = fill.length ? `
+        <div class="fill-card">
+          ${fillListHTML(fill)}
+          <button type="button" class="link-btn" data-fillpick>تعديل اللي جوا البوكس</button>
+          <div class="o-sum"><span>البوكس</span><span>${formatPrice(price)}</span></div>
+          <div class="o-sum"><span>اللي جواه</span><span>${formatPrice(fillTotal(fill))}</span></div>
+        </div>`
+        : '<button type="button" class="fill-pick" data-fillpick><span class="plus" aria-hidden="true">+</span>اختار شو بدك جوا البوكس</button>';
+    }
+
+    function drawFillSum() {
+      const kg = fill.reduce((sum, f) => sum + f.qty, 0);
+      $('#fillSum', sheet).textContent = fill.length ? `جوا البوكس: ${countLabel(fill.length)}، ${formatQty(kg, 'كيلو')}` : 'لسا ما اخترت شي';
+      $('#fillTot', sheet).textContent = formatPrice(fillTotal(fill));
+    }
+
+    function drawFillList() {
+      const words = normalizeAr(fillQuery).split(/\s+/).filter(Boolean);
+      const list = products.filter(x => canFill(x)
+        && (fillCat === 'all' || x.category_id === fillCat)
+        && words.every(w => normalizeAr(`${x.name} ${catName(x.category_id)}`).includes(w)));
+      $('#fillList', sheet).innerHTML = list.length ? list.map(fillRow).join('')
+        : '<div class="empty"><b>ما في شي بهالاسم</b>جرّب كلمة تانية أو قسم تاني.</div>';
+      drawFillSum();
+    }
+
+    function drawFillChips() {
+      const all = [{ id: 'all', name: 'الكل' }, ...fillCats()];
+      $('#fillChips', sheet).innerHTML = all.map(c =>
+        `<button type="button" class="chip" data-fcat="${c.id}" aria-pressed="${c.id === fillCat}">${escapeHTML(c.name)}</button>`).join('');
+    }
+
+    function openFill() {
+      $('#pMain', sheet).hidden = true;
+      const panel = $('#pFill', sheet);
+      panel.hidden = false;
+      sheet.classList.add('tall');
+      panel.innerHTML = `
+        <div class="sheet-head">
+          <button type="button" class="back-btn" data-fillback aria-label="رجوع">→</button>
+          <h2>شو بدك جوا البوكس؟</h2>
+          <button class="close" aria-label="إغلاق">×</button>
+        </div>
+        <label class="search fill-search">
+          <span class="visually-hidden">ابحث عن صنف</span>
+          ${ICON.search}
+          <input type="search" id="fillQ" placeholder="ابحث عن صنف أو قسم" autocomplete="off" value="${escapeHTML(fillQuery)}">
+        </label>
+        <div class="chips fill-chips" id="fillChips"></div>
+        <div id="fillList"></div>
+        <div class="buy">
+          <div class="buy-row"><span class="fill-sum" id="fillSum"></span><b class="buy-total" id="fillTot"></b></div>
+          <button type="button" class="btn" data-fillback>تمام</button>
+        </div>`;
+      drawFillChips();
+      drawFillList();
+      $('#fillQ', panel).addEventListener('input', e => { fillQuery = e.target.value; drawFillList(); });
+      sheet.scrollTop = 0;
+      $('.back-btn', panel).focus({ preventScroll: true });
+    }
+
+    function closeFill() {
+      $('#pFill', sheet).hidden = true;
+      $('#pMain', sheet).hidden = false;
+      sheet.classList.remove('tall');
+      drawFillBox();
+      drawQty();
+      $('#fillBox', sheet).scrollIntoView({ block: 'center' });
+    }
+
+    if (boxy) sheet.addEventListener('click', e => {
+      const mode = e.target.closest('[data-fillmode]');
+      if (mode) {
+        filled = mode.dataset.fillmode === '1';
+        sheet.querySelectorAll('[data-fillmode]').forEach(b => b.setAttribute('aria-pressed', String(b === mode)));
+        drawFillBox();
+        drawQty();
+        if (filled) $('#fillBox', sheet).scrollIntoView({ block: 'center', behavior: 'smooth' });
+        return;
+      }
+      if (e.target.closest('[data-fillpick]')) { openFill(); return; }
+      if (e.target.closest('[data-fillback]')) { closeFill(); return; }
+      const chip = e.target.closest('[data-fcat]');
+      if (chip) {
+        fillCat = chip.dataset.fcat === 'all' ? 'all' : Number(chip.dataset.fcat);
+        drawFillChips();
+        drawFillList();
+        return;
+      }
+      const row = e.target.closest('[data-fid]');
+      if (!row) return;
+      const fid = Number(row.dataset.fid);
+      const f = fill.find(y => y.id === fid);
+      const st = e.target.closest('[data-fs]');
+      if (e.target.closest('[data-fadd]')) fill.push({ id: fid, qty: 0.5 });
+      else if (f && st) {
+        const q = f.qty + FILL_MIN * Number(st.dataset.fs);
+        if (q < FILL_MIN) fill = fill.filter(y => y !== f);
+        else f.qty = snapFill(q);
+      } else return;
+      // منبدّل السطر بس، لحتى ما يتحرك التمرير
+      row.outerHTML = fillRow(findProduct(fid));
+      drawFillSum();
     });
 
     $('#pAdd', sheet).addEventListener('click', () => {
+      if (filled && !fill.length) { openFill(); return; }
       const note = p.custom_note_label ? $('#pNote', sheet).value.trim() : '';
+      if (filled) {
+        addToCart(p.id, 1, note, fill);
+        closeSheet();
+        toast(`انضاف ${p.name} معبّى للسلة`);
+        return;
+      }
       addToCart(p.id, qty, note);
       closeSheet();
       toast('انضاف ' + formatQty(qty, p.unit) + ' ' + p.name + ' للسلة');
     });
   }
 
-  function addToCart(id, qty, note = '') {
-    const line = cart.find(l => l.id === id && (l.note || '') === note);
+  function addToCart(id, qty, note = '', fill = null) {
+    // كل بوكس معبّى سطر لحاله، ما بينجمع مع غيره
+    if (fill && fill.length) {
+      cart.push({ id, qty: 1, note, fill: fill.map(f => ({ id: f.id, qty: f.qty })) });
+      saveCart();
+      return;
+    }
+    const line = cart.find(l => l.id === id && !l.fill && (l.note || '') === note);
     if (line) line.qty += qty;
     else cart.push({ id, qty, note });
     saveCart();
+  }
+
+  // شو جوا البوكس: سطر لكل صنف بكميته
+  function fillListHTML(fill) {
+    return `<ul class="fill-list">${fill.map(f => {
+      const fp = findProduct(f.id);
+      return fp ? `<li><span>${escapeHTML(fp.name)}</span><span>${formatQty(f.qty, 'كيلو')}</span></li>` : '';
+    }).join('')}</ul>`;
   }
 
   /* ---------- السلة ---------- */
@@ -596,12 +789,13 @@
             <div>
               <h4>${escapeHTML(p.name)}</h4>
               ${l.note ? `<p class="note">${escapeHTML(l.note)}</p>` : ''}
+              ${l.fill ? fillListHTML(l.fill) : ''}
               <div class="ctrl">
-                ${stepperHTML(l.qty, p.unit, true)}
+                ${l.fill ? '<span class="c-one">بوكس معبّى</span>' : stepperHTML(l.qty, p.unit, true)}
                 <button class="link-btn" data-remove="${i}">إزالة</button>
               </div>
             </div>
-            <span class="sum">${effectivePrice(p) !== p.price ? `<s>${formatPrice(p.price * l.qty)}</s>` : ''}${formatPrice(effectivePrice(p) * l.qty)}</span>
+            <span class="sum">${!l.fill && effectivePrice(p) !== p.price ? `<s>${formatPrice(p.price * l.qty)}</s>` : ''}${formatPrice(lineTotal(l))}</span>
           </div>`;
       }).join('')}
       <div class="totals"><span>المجموع</span><b>${formatPrice(cartTotal())}</b></div>
@@ -612,6 +806,7 @@
   const TZ = 'Asia/Damascus';
   const ORDER_ERRORS = {
     shop_closed: 'المحل مسكّر هلق، جرّب بعدين.',
+    invalid_box: 'في مشكلة بالبوكس المعبّى. شيله من السلة وضيفه من جديد.',
     busy: 'في ضغط طلبات هلق، جرّب بعد دقيقة.',
     too_many_orders: 'بعتت طلبات كتير من نفس الرقم. استنى شوي، أو راسلنا عالواتس.',
     invalid_name: 'اكتب اسمك.',
@@ -1010,7 +1205,10 @@
         payment_account_id: usesAccount ? draft.account_id : null,
         notes: draft.notes,
         coupon_code: draft.coupon ? draft.coupon.code : null,
-        items: cart.map(l => ({ product_id: l.id, qty: l.qty, note: l.note || '' })),
+        items: cart.map(l => ({
+          product_id: l.id, qty: l.qty, note: l.note || '',
+          ...(l.fill ? { fill: l.fill.map(f => ({ product_id: f.id, qty: f.qty })) } : {}),
+        })),
       } });
       orderPlaced(r);
     } catch (err) {
@@ -1025,7 +1223,9 @@
     const d = draft;
     const L = [`*طلب جديد من تطبيق ${CONFIG.shopName}*`, `رقم الطلب: #${r.code}`, '', '*الأصناف:*'];
     r.items.forEach(i => {
-      L.push(`- ${i.name}: ${formatQty(Number(i.qty), i.unit)} = ${formatPrice(i.line_total)}`);
+      // اللي جوا البوكس تحت البوكس بخطوة لجوا
+      if (i.in_box) { L.push(`   + ${i.name}: ${formatQty(Number(i.qty), i.unit)} = ${formatPrice(i.line_total)}`); return; }
+      L.push(`- ${i.name}${i.box_no ? ' (معبّى)' : ''}: ${formatQty(Number(i.qty), i.unit)} = ${formatPrice(i.line_total)}`);
       if (i.note) L.push(`  ملاحظة: ${i.note}`);
     });
     L.push('');
@@ -1088,12 +1288,14 @@
   const deliveryLine = o => o.status === 'cancelled' ? 'تواصل معنا إذا عندك سؤال'
     : o.delivery_mode === 'scheduled' ? `بيوصلك ${whenLabel(o.scheduled_at)}` : 'بأقرب وقت';
   const payLine = o => ({ cash: 'كاش عند الاستلام', shamcash: 'شام كاش', bank: 'تحويل بنكي' }[o.payment_method]);
-  const thumbs = o => `<div class="o-thumbs">${o.items.slice(0, 4).map(i => photo(i.image, '', true)).join('')}</div>`;
+  const mainItems = o => o.items.filter(i => !i.in_box);
+  const thumbs = o => `<div class="o-thumbs">${mainItems(o).slice(0, 4).map(i => photo(i.image, '', true)).join('')}</div>`;
 
   function orderTitle(o) {
-    const first = o.items[0];
+    const items = mainItems(o);
+    const first = items[0];
     if (!first) return `طلب #${o.code}`;
-    return o.items.length === 1 ? first.name : `${first.name} و${o.items.length - 1 === 1 ? 'صنف تاني' : (o.items.length - 1) + ' أصناف'}`;
+    return items.length === 1 ? first.name : `${first.name} و${items.length - 1 === 1 ? 'صنف تاني' : (items.length - 1) + ' أصناف'}`;
   }
 
   // التقييم بعد التسليم: مرة وحدة، وبعدها منعرض شو اختار
@@ -1143,7 +1345,7 @@
           </li>`).join('')}
       </ul>`}
       <div class="o-box">
-        <div class="o-line">${thumbs(o)}<span>${countLabel(o.items.length)}</span></div>
+        <div class="o-line">${thumbs(o)}<span>${countLabel(mainItems(o).length)}</span></div>
         ${o.discount ? `<div class="o-sum"><span>الخصم</span><span>−${formatPrice(o.discount)}</span></div>` : ''}
         <div class="o-sum"><span>التوصيل</span><span>${o.delivery_fee == null ? 'حسب الاتفاق' : formatPrice(o.delivery_fee)}</span></div>
         <div class="o-sum total"><b>المجموع</b><b class="price">${formatPrice(o.total)}</b></div>
@@ -1286,15 +1488,24 @@
   // إعادة الطلب: بالأسعار الحالية، والصنف اللي خلص بينشال
   function reorder(o) {
     let added = 0;
-    o.items.forEach(i => {
+    const items = mainItems(o);
+    items.forEach(i => {
       const p = i.product_id ? findProduct(i.product_id) : null;
       if (!canOrder(p)) return;
-      addToCart(p.id, snapQty(i.qty, p.unit), i.note || '');
+      if (i.box_no && isBox(p)) {
+        // البوكس المعبّى: منرجّع نعبّيه باللي كان جواه (إذا لسا متوفر)
+        const fill = o.items
+          .filter(x => x.in_box && x.box_no === i.box_no && canFill(findProduct(x.product_id)))
+          .map(x => ({ id: x.product_id, qty: snapFill(x.qty) }));
+        addToCart(p.id, 1, i.note || '', fill);
+      } else {
+        addToCart(p.id, snapQty(i.qty, p.unit), i.note || '');
+      }
       added++;
     });
     if (!added) { toast('أصناف هالطلب مو متوفرة هلق'); return; }
     openCart();
-    if (added < o.items.length) toast('في أصناف ما عادت متوفرة، ضفنا الباقي');
+    if (added < items.length) toast('في أصناف ما عادت متوفرة، ضفنا الباقي');
   }
 
   /* ---------- القصص ----------
@@ -1495,7 +1706,8 @@
       const add = e.target.closest('[data-add]');
       if (add) {
         const p = findProduct(add.dataset.add);
-        if (p.custom_note_label) { openProduct(p.id); return; }
+        // البوكس بيفتح صفحته لحتى يختار الزبون فارغ ولا معبّى
+        if (p.custom_note_label || (isBox(p) && products.some(canFill))) { openProduct(p.id); return; }
         const q = Math.max(1, minQty(p.unit));
         addToCart(p.id, q);
         toast('انضاف ' + formatQty(q, p.unit) + ' ' + p.name + ' للسلة');

@@ -71,8 +71,12 @@ create trigger orders_status_stamp before update on public.orders
 --   "payment_method": "cash" | "shamcash" | "bank",
 --   "payment_account_id": 2,                         -- بس مع shamcash/bank
 --   "notes": "...", "coupon_code": "EID10",
---   "items": [ { "product_id": 1, "qty": 1.5, "note": "أهلاً بجود" } ]
+--   "items": [ { "product_id": 1, "qty": 1.5, "note": "أهلاً بجود" },
+--              { "product_id": 9, "qty": 1, "fill": [ { "product_id": 3, "qty": 0.5 } ] } ]
 -- }
+-- fill: البوكس المعبّى (18_box_fill.sql). البوكس لازم يكون من قسم is_boxes وكميته 1،
+-- واللي جواه من أقسام box_fill وبالكيلو، من ربع كيلو وطالع والخطوة ربع.
+-- البوكس واللي جواه بياخدوا نفس box_no، واللي جواه in_box = true.
 -- الأسعار اللي بيبعتها الزبون (إذا بعت) ما منستعملها أبداً.
 -- =========================================================
 create or replace function public.place_order(p_order jsonb)
@@ -87,7 +91,12 @@ declare
   acc      public.payment_accounts;
   c        public.coupons;
   pr       public.products;
+  fp       public.products;
   it       jsonb;
+  fl       jsonb;
+  v_isbox  boolean;
+  v_box    int := 0;
+  v_boxno  int;
   v_name    text := left(btrim(coalesce(p_order->>'name', '')), 80);
   v_phone   text := left(btrim(coalesce(p_order->>'phone', '')), 30);
   v_address text := left(btrim(coalesce(p_order->>'address', '')), 300);
@@ -131,7 +140,8 @@ begin
         'items', coalesce((
           select jsonb_agg(jsonb_build_object(
             'product_id', i.product_id, 'name', i.name, 'image', i.image, 'unit', i.unit,
-            'qty', i.qty, 'unit_price', i.unit_price, 'line_total', i.line_total, 'note', i.note
+            'qty', i.qty, 'unit_price', i.unit_price, 'line_total', i.line_total, 'note', i.note,
+            'box_no', i.box_no, 'in_box', i.in_box
           ) order by i.id)
           from public.order_items i where i.order_id = v_old.id
         ), '[]'::jsonb)
@@ -203,6 +213,16 @@ begin
     v_line := round(v_price * v_qty)::bigint;
     v_subtotal := v_subtotal + v_line;
 
+    -- البوكس المعبّى: لازم يكون من قسم بوكسات، وكميته وحدة
+    v_boxno := null;
+    if jsonb_typeof(it->'fill') = 'array' and jsonb_array_length(it->'fill') > 0 then
+      select cat.is_boxes into v_isbox from public.categories cat where cat.id = pr.category_id;
+      if not coalesce(v_isbox, false) then raise exception 'invalid_box'; end if;
+      if v_qty <> 1 or jsonb_array_length(it->'fill') > 20 then raise exception 'invalid_qty'; end if;
+      v_box := v_box + 1;
+      v_boxno := v_box;
+    end if;
+
     v_lines := v_lines || jsonb_build_object(
       'product_id', pr.id,
       'name',       pr.name,
@@ -211,8 +231,50 @@ begin
       'qty',        v_qty,
       'unit_price', v_price,
       'line_total', v_line,
-      'note',       left(btrim(coalesce(it->>'note', '')), 200)
+      'note',       left(btrim(coalesce(it->>'note', '')), 200),
+      'box_no',     v_boxno,
+      'in_box',     false
     );
+
+    -- اللي جوا البوكس: أسطر عادية بسعرها، بنفس رقم البوكس
+    if v_boxno is not null then
+      for fl in select value from jsonb_array_elements(it->'fill') loop
+        select p.* into fp
+        from public.products p
+        join public.categories cat on cat.id = p.category_id
+        where p.id = nullif(fl->>'product_id', '')::bigint
+          and not p.hidden
+          and p.available
+          and p.unit = 'كيلو'
+          and not cat.hidden and not cat.coming_soon and cat.box_fill;
+        if not found then raise exception 'product_unavailable'; end if;
+
+        v_qty := nullif(fl->>'qty', '')::numeric;
+        if v_qty is null or v_qty < 0.25 or v_qty > 50 or mod(v_qty, 0.25) <> 0 then
+          raise exception 'invalid_qty';
+        end if;
+        v_price := case
+          when fp.sale_price is not null and (fp.sale_until is null or fp.sale_until > now())
+            then fp.sale_price
+          else fp.price
+        end;
+        v_line := round(v_price * v_qty)::bigint;
+        v_subtotal := v_subtotal + v_line;
+
+        v_lines := v_lines || jsonb_build_object(
+          'product_id', fp.id,
+          'name',       fp.name,
+          'image',      fp.images[1],
+          'unit',       fp.unit,
+          'qty',        v_qty,
+          'unit_price', v_price,
+          'line_total', v_line,
+          'note',       '',
+          'box_no',     v_boxno,
+          'in_box',     true
+        );
+      end loop;
+    end if;
   end loop;
 
   -- الموعد
@@ -288,11 +350,13 @@ begin
   )
   returning id into v_id;
 
-  insert into public.order_items (order_id, product_id, name, image, unit, qty, unit_price, line_total, note)
+  insert into public.order_items (order_id, product_id, name, image, unit, qty, unit_price, line_total, note, box_no, in_box)
   select v_id,
          (l->>'product_id')::bigint, l->>'name', l->>'image', l->>'unit',
-         (l->>'qty')::numeric, (l->>'unit_price')::bigint, (l->>'line_total')::bigint, l->>'note'
-  from jsonb_array_elements(v_lines) l;
+         (l->>'qty')::numeric, (l->>'unit_price')::bigint, (l->>'line_total')::bigint, l->>'note',
+         (l->>'box_no')::smallint, coalesce((l->>'in_box')::boolean, false)
+  from jsonb_array_elements(v_lines) with ordinality as e(l, n)
+  order by e.n;   -- بنفس الترتيب، لحتى يجي البوكس وبعده اللي جواه
 
   -- الأرقام النهائية من السيرفر، الواجهة بتستعملها برسالة الواتس
   return jsonb_build_object(
@@ -345,7 +409,8 @@ as $$
     'items', coalesce((
       select jsonb_agg(jsonb_build_object(
         'product_id', i.product_id, 'name', i.name, 'image', i.image, 'unit', i.unit,
-        'qty', i.qty, 'unit_price', i.unit_price, 'line_total', i.line_total, 'note', i.note
+        'qty', i.qty, 'unit_price', i.unit_price, 'line_total', i.line_total, 'note', i.note,
+        'box_no', i.box_no, 'in_box', i.in_box
       ) order by i.id)
       from public.order_items i where i.order_id = o.id
     ), '[]'::jsonb),

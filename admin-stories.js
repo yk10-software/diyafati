@@ -94,6 +94,7 @@
     const sheet = A.openSheet(`
       <div class="sheet-head"><h2>${isNew ? 'قصة جديدة' : 'تعديل القصة'}</h2><button class="close" aria-label="إغلاق">×</button></div>
       <form id="sForm" novalidate>
+        <div id="sMain">
         <label class="field" data-f="title">
           <span>اسم القصة</span>
           <input name="title" maxlength="30" value="${escapeHTML(existing ? existing.title : '')}" placeholder="متل: مواليد">
@@ -113,6 +114,19 @@
         </div>`}
         <button class="btn" type="submit">${isNew ? 'إضافة القصة' : 'حفظ'}</button>
         ${isNew ? '' : '<button class="btn danger" type="button" id="sDel" style="margin-top:10px">حذف القصة</button>'}
+        </div>
+        <div id="sPick" hidden>
+          <div class="sp-head">
+            <button class="sq" type="button" data-pick-back aria-label="رجوع">→</button>
+            <p class="sheet-sub" id="sPickTitle">اربط بصنف</p>
+          </div>
+          <label class="search sp-search">
+            <span class="visually-hidden">ابحث عن صنف</span>
+            ${icon('search')}
+            <input type="search" id="sQ" placeholder="ابحث باسم الصنف أو القسم" autocomplete="off" enterkeyhint="search">
+          </label>
+          <div id="sPickList"></div>
+        </div>
       </form>
     `);
 
@@ -121,8 +135,7 @@
     const msg = $('#sMsg', sheet);
     A.clearOnInput(form, msg);
 
-    const productOptions = selected => `<option value="">بلا صنف</option>` + state.products.map(p =>
-      `<option value="${p.id}" ${p.id === selected ? 'selected' : ''}>${escapeHTML(p.name)}</option>`).join('');
+    const productName = id => { const p = state.products.find(x => x.id === id); return p ? p.name : ''; };
 
     function drawRows() {
       $('#sRows', sheet).innerHTML = rows.map((r, i) => {
@@ -136,7 +149,10 @@
             ${isVid(r) ? '<span class="si-play" aria-hidden="true"></span>' : ''}
           </div>
           <div class="si-mid">
-            <select data-prod="${i}" aria-label="الصنف المرتبط ب${kind} ${i + 1}">${productOptions(r.product_id)}</select>
+            <button class="si-link${productName(r.product_id) ? ' on' : ''}" type="button" data-link="${i}"
+              aria-label="الصنف المرتبط ب${kind} ${i + 1}: ${escapeHTML(productName(r.product_id) || 'بلا صنف')}">
+              ${icon('search')}<span>${escapeHTML(productName(r.product_id) || 'اربط بصنف (اختياري)')}</span>
+            </button>
             <small>${what}${when}</small>
           </div>
           <div class="si-act">
@@ -151,7 +167,83 @@
 
     const swap = (i, j) => { [rows[i], rows[j]] = [rows[j], rows[i]]; drawRows(); };
 
+    /* ---------- ربط الصورة بصنف: بحث بدل قائمة طويلة ----------
+       منخبّي النموذج ومنفرجي البحث بنفس النافذة، لحتى ما يضيع شي ما انحفظ.
+       البحث بكل كلمة لحالها، بالاسم أو باسم القسم (normalizeAr بـ data.js). */
+    let pickFor = null;
+    const byOrder = (a, b) => a.sort_order - b.sort_order || a.id - b.id;
+
+    function openPicker(i) {
+      pickFor = i;
+      $('#sMain', sheet).hidden = true;
+      $('#sPick', sheet).hidden = false;
+      sheet.classList.add('tall');   // لحتى ما تنط النافذة مع كل حرف بالبحث
+      $('#sPickTitle', sheet).textContent = `اربط ${isVid(rows[i]) ? 'الفيديو' : 'الصورة'} ${i + 1} بصنف`;
+      const q = $('#sQ', sheet);
+      q.value = '';
+      drawPick('');
+      sheet.scrollTop = 0;
+      q.focus();
+    }
+
+    function closePicker() {
+      const i = pickFor;
+      pickFor = null;
+      $('#sPick', sheet).hidden = true;
+      $('#sMain', sheet).hidden = false;
+      sheet.classList.remove('tall');
+      drawRows();
+      const b = $(`[data-link="${i}"]`, sheet);
+      if (b) { b.scrollIntoView({ block: 'center' }); b.focus(); }
+    }
+
+    function drawPick(query) {
+      const words = normalizeAr(query).split(/\s+/).filter(Boolean);
+      const cur = rows[pickFor] ? rows[pickFor].product_id : null;
+      const cats = [...state.cats].sort(byOrder);
+      const groups = [
+        ...cats.map(c => ({ name: c.name, list: state.products.filter(p => p.category_id === c.id) })),
+        { name: 'بلا قسم', list: state.products.filter(p => !cats.some(c => c.id === p.category_id)) },
+      ];
+      const item = p => `
+        <button class="sp-item${p.id === cur ? ' on' : ''}" type="button" data-pick="${p.id}">
+          ${A.thumb(p.images && p.images[0], 'sp-th')}
+          <span>${escapeHTML(p.name)}${p.hidden ? ' <small>(مخفي)</small>' : ''}</span>
+        </button>`;
+      let html = words.length ? ''
+        : `<button class="sp-item sp-none${cur ? '' : ' on'}" type="button" data-pick="">بلا صنف</button>`;
+      let found = 0;
+      for (const g of groups) {
+        const hay = p => normalizeAr(`${p.name} ${g.name}`);
+        const list = g.list.filter(p => words.every(w => hay(p).includes(w))).sort(byOrder);
+        if (!list.length) continue;
+        found += list.length;
+        html += `<p class="sp-cat">${escapeHTML(g.name)}</p>${list.map(item).join('')}`;
+      }
+      if (words.length && !found) {
+        html = '<p class="sp-empty">ما في صنف بهالاسم. إذا لسا ما انضاف، ضيفه من شاشة الأصناف وبعدين ارجع لهون.</p>';
+      }
+      $('#sPickList', sheet).innerHTML = html;
+    }
+
+    $('#sQ', sheet).addEventListener('input', e => drawPick(e.target.value));
+    // Enter بيختار أول نتيجة بدل ما يحفظ القصة
+    $('#sQ', sheet).addEventListener('keydown', e => {
+      if (e.key !== 'Enter') return;
+      e.preventDefault();
+      const first = $('#sPickList [data-pick]:not(.sp-none)', sheet);
+      if (first) first.click();
+    });
+
     sheet.addEventListener('click', e => {
+      const link = e.target.closest('[data-link]');
+      if (link) return openPicker(Number(link.dataset.link));
+      const pick = e.target.closest('[data-pick]');
+      if (pick && pickFor !== null) {
+        rows[pickFor].product_id = pick.dataset.pick ? Number(pick.dataset.pick) : null;
+        return closePicker();
+      }
+      if (e.target.closest('[data-pick-back]')) return closePicker();
       const up = e.target.closest('[data-up]');
       if (up) return swap(Number(up.dataset.up), Number(up.dataset.up) - 1);
       const down = e.target.closest('[data-down]');
@@ -163,10 +255,6 @@
     });
 
     sheet.addEventListener('change', async e => {
-      if (e.target.dataset.prod !== undefined) {
-        rows[Number(e.target.dataset.prod)].product_id = e.target.value ? Number(e.target.value) : null;
-        return;
-      }
       if (e.target.id !== 'sImg') return;
       const files = [...e.target.files];
       e.target.value = '';

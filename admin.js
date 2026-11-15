@@ -215,11 +215,14 @@ const A = (() => {
     });
   }
 
+  // اسم عشوائي للملف. randomUUID بتشتغل بس على https أو localhost،
+  // فإذا فتحت اللوحة من الموبايل على IP اللابتوب منستعمل البديل
+  const newId = () => (crypto.randomUUID ? crypto.randomUUID()
+    : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10));
+
   // small: نسخة 480px بنفس الاسم وآخرها -sm (لصور الأصناف). إذا فشلت، منشيل الكبيرة كمان
   async function uploadImage(blob, folder, small) {
-    // randomUUID بتشتغل بس على https أو localhost، فإذا فتحت اللوحة من الموبايل على IP اللابتوب منستعمل البديل
-    const id = crypto.randomUUID ? crypto.randomUUID()
-      : Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10);
+    const id = newId();
     const path = `${folder}/${id}.jpg`;
     const opts = { contentType: 'image/jpeg', cacheControl: '31536000' };
     await db(sb.storage.from(BUCKET).upload(path, blob, opts));
@@ -239,6 +242,144 @@ const A = (() => {
     if (!paths.length) return;
     try { await db(sb.storage.from(BUCKET).remove(paths)); }
     catch (err) { console.warn('ما قدرنا نحذف صور قديمة', err); }   // مو مشكلة كبيرة، بتضل بالسطل
+  }
+
+  /* ---------- الفيديو (للقصص) ----------
+     قبل الرفع منتأكد من 3 شغلات: الحجم، والطول، وإنو الفيديو H.264.
+     فيديو الآيفون العادي (HEVC) بيشتغل على الآيفون بس، وما بيشتغل
+     عند كتير من زباين الأندرويد، فمنرفضه ومنقول لصاحب المحل شو يعمل.
+     ومن الفيديو منطلّع صورة غلاف بتبيّن بالقوس وقبل ما يحمّل الفيديو. */
+  const VIDEO_BUCKET = 'videos';
+  const VIDEO_MAX_MB = 10;    // نفس حد السطل بـ 17_story_videos.sql
+  const VIDEO_MAX_SEC = 60;
+
+  // منقرأ نوع الضغط من الملف نفسه، من صندوق moov تبع MP4 (بلا مكتبات)
+  function videoCodec(buf) {
+    const dv = new DataView(buf);
+    const len = buf.byteLength;
+    let off = 0;
+    let moov = null;
+    while (off + 8 <= len) {
+      let size = dv.getUint32(off);
+      const type = String.fromCharCode(dv.getUint8(off + 4), dv.getUint8(off + 5), dv.getUint8(off + 6), dv.getUint8(off + 7));
+      let head = 8;
+      if (size === 1) {                      // حجم كبير بـ 64 بت
+        if (off + 16 > len) break;
+        size = dv.getUint32(off + 8) * 2 ** 32 + dv.getUint32(off + 12);
+        head = 16;
+      } else if (size === 0) size = len - off;   // للآخر
+      if (size < head) break;
+      if (type === 'moov') { moov = new Uint8Array(buf, off + head, Math.min(len, off + size) - off - head); break; }
+      off += size;
+    }
+    if (!moov) return null;
+    const codes = { avc1: 'h264', avc3: 'h264', hvc1: 'hevc', hev1: 'hevc' };
+    const found = new Set();
+    for (let i = 0; i + 4 <= moov.length; i++) {
+      const c = String.fromCharCode(moov[i], moov[i + 1], moov[i + 2], moov[i + 3]);
+      if (codes[c]) found.add(codes[c]);
+    }
+    if (found.has('hevc')) return 'hevc';
+    if (found.has('h264')) return 'h264';
+    return 'other';
+  }
+
+  // بيستنى حدث وحدة مرة، وبيفشل إذا صار خطأ أو طوّل
+  function once(el, ev, ms) {
+    return new Promise((resolve, reject) => {
+      const done = ok => () => { clearTimeout(t); el.removeEventListener(ev, yes); el.removeEventListener('error', no); ok(); };
+      const yes = done(resolve);
+      const no = done(() => reject(new Error('video error')));
+      const t = setTimeout(() => { el.removeEventListener(ev, yes); el.removeEventListener('error', no); reject(new Error('timeout')); }, ms);
+      el.addEventListener(ev, yes);
+      el.addEventListener('error', no);
+    });
+  }
+
+  function canvasJpeg(c) {
+    return new Promise((resolve, reject) =>
+      c.toBlob(b => (b ? resolve(b) : reject(new Error('bad frame'))), 'image/jpeg', 0.8));
+  }
+
+  // غلاف احتياطي إذا الموبايل ما عطانا لقطة: لون الكاكاو ومثلث تشغيل زبدي
+  function fallbackPoster() {
+    const c = document.createElement('canvas');
+    c.width = 720;
+    c.height = 900;
+    const ctx = c.getContext('2d');
+    ctx.fillStyle = '#5D3E22';
+    ctx.fillRect(0, 0, c.width, c.height);
+    ctx.fillStyle = '#F9F7A4';
+    ctx.beginPath();
+    ctx.moveTo(310, 380);
+    ctx.lineTo(310, 520);
+    ctx.lineTo(430, 450);
+    ctx.closePath();
+    ctx.fill();
+    return canvasJpeg(c);
+  }
+
+  // بيرجّع { duration, poster } أو بيرمي خطأ رسالته وحدة من: big, hevc, format, long
+  async function prepareVideo(file) {
+    if (file.size > VIDEO_MAX_MB * 1048576) throw new Error('big');
+    const codec = videoCodec(await file.arrayBuffer());
+    if (codec === 'hevc') throw new Error('hevc');
+    if (codec !== 'h264') throw new Error('format');
+
+    const url = URL.createObjectURL(file);
+    const v = document.createElement('video');
+    v.muted = true;
+    v.playsInline = true;
+    v.setAttribute('playsinline', '');
+    v.preload = 'auto';
+    try {
+      v.src = url;
+      try { await once(v, 'loadedmetadata', 10000); }
+      catch (err) { throw new Error('format'); }
+      const duration = v.duration;
+      if (!isFinite(duration) || duration <= 0) throw new Error('format');
+      if (duration > VIDEO_MAX_SEC + 0.5) throw new Error('long');
+
+      let poster = null;
+      try {
+        // الآيفون أحياناً ما بيرسم لقطة قبل ما يشتغل الفيديو، فمنشغّله لحظة ومنوقفه
+        try {
+          await Promise.race([v.play(), new Promise((_, no) => setTimeout(() => no(new Error('slow')), 3000))]);
+        } catch (err) { /* مو ضروري */ }
+        v.pause();
+        v.currentTime = Math.min(0.5, duration / 3);
+        await once(v, 'seeked', 6000);
+        if (v.videoWidth) {
+          const r = Math.min(1, 1280 / Math.max(v.videoWidth, v.videoHeight));
+          const c = document.createElement('canvas');
+          c.width = Math.round(v.videoWidth * r);
+          c.height = Math.round(v.videoHeight * r);
+          c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+          poster = await canvasJpeg(c);
+        }
+      } catch (err) { console.warn('ما قدرنا ناخد لقطة من الفيديو', err); }
+      if (!poster) poster = await fallbackPoster();
+      return { duration: Math.round(duration), poster };
+    } finally {
+      v.removeAttribute('src');
+      v.load();
+      URL.revokeObjectURL(url);
+    }
+  }
+
+  // دايماً منرفعه كـ MP4: فيديو H.264 من الآيفون (mov) بيشتغل كـ MP4 عادي
+  async function uploadVideo(file, folder) {
+    const path = `${folder}/${newId()}.mp4`;
+    await db(sb.storage.from(VIDEO_BUCKET).upload(path, file, { contentType: 'video/mp4', cacheControl: '31536000' }));
+    return sb.storage.from(VIDEO_BUCKET).getPublicUrl(path).data.publicUrl;
+  }
+
+  async function removeVideos(urls) {
+    const marker = `/storage/v1/object/public/${VIDEO_BUCKET}/`;
+    const paths = urls.filter(u => u && u.includes(marker)).map(u => decodeURIComponent(u.split(marker)[1]));
+    if (!paths.length) return;
+    try { await db(sb.storage.from(VIDEO_BUCKET).remove(paths)); }
+    catch (err) { console.warn('ما قدرنا نحذف فيديو قديم', err); }
   }
 
   // الصنف اللي ما إله صورة: كرت بهوية ضيافتي (قوس زبدي ولوغو)
@@ -438,6 +579,7 @@ const A = (() => {
     $, $$, state, views, icon, countAr, num, db, fail, toast, loadOrders, loadReviewStamps,
     openSheet, closeSheet, confirmTwice, clearOnInput, requireFields, busy,
     resizeImage, uploadImage, removeImages, thumb, dayName, expiryOptions, endOfDay,
+    prepareVideo, uploadVideo, removeVideos, VIDEO_MAX_MB, VIDEO_MAX_SEC,
     render, refreshHead, openAccount, current,
     get user() { return user; },
   };

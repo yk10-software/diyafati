@@ -380,8 +380,13 @@ body:has(#cartBar:not([hidden])) .yk-foot { padding-bottom: calc(20px + 70px + v
 .story-view .s-head div { display: flex; align-items: center; gap: 10px; font-weight: 600; }
 .story-view .s-head img { width: 34px; height: 34px; border-radius: 50%; background: var(--butter); padding: 4px; }
 .story-view .s-head button { border: 0; background: none; color: #fff; font-size: 28px; width: 44px; height: 44px; }
+.story-view .s-btns { display: flex; align-items: center; }
+.story-view .s-sound svg { width: 24px; height: 24px; display: block; margin: auto; }
+/* الفيديو: الشريط بيمشي مع الفيديو نفسه من app.js، مو بالحركة */
+.story-view .bars i.run.vid b { animation: none; }
 .story-view .s-img { flex: 1; position: relative; display: flex; align-items: center; justify-content: center; min-height: 0; }
-.story-view .s-img img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.story-view .s-img img, .story-view .s-img video { max-width: 100%; max-height: 100%; object-fit: contain; }
+.story-view .s-img video { width: 100%; height: 100%; background: #1E140B; }
 .story-view .tap { position: absolute; top: 0; bottom: 0; width: 50%; border: 0; background: transparent; }
 .story-view .tap.prev { right: 0; }
 .story-view .tap.next { left: 0; }
@@ -428,6 +433,7 @@ body:has(#cartBar:not([hidden])) .yk-foot { padding-bottom: calc(20px + 70px + v
 .form-msg { color: var(--danger); font-size: 14px; line-height: 1.5; margin: 0 0 12px; text-align: start; }
 .form-msg:empty { display: none; }
 .form-msg.ok { color: var(--whats); }
+.form-msg.info { color: var(--muted); }
 .muted-line { color: var(--muted); margin: -6px 0 16px; font-size: 14px; }
 .sheet-sub { font-family: var(--f-display); font-weight: 500; color: var(--cocoa); font-size: 18px; margin: 0 0 12px; }
 
@@ -551,7 +557,11 @@ body.in-panel .toast { bottom: calc(150px + var(--safe-b)); }
 .a-stories .t { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .a-stories .off { opacity: .45; }
 .si-row { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
-.si-row > img { flex: 0 0 48px; width: 48px; height: 60px; object-fit: cover; border-radius: var(--arch); background: var(--photo); }
+.si-pic { position: relative; flex: 0 0 48px; }
+.si-pic img { display: block; width: 48px; height: 60px; object-fit: cover; border-radius: var(--arch); background: var(--photo); }
+/* علامة الفيديو: مثلث تشغيل صغير بدائرة كاكاو */
+.si-play { position: absolute; inset-inline-end: -4px; bottom: -4px; width: 22px; height: 22px; border-radius: 50%; background: var(--cocoa); border: 2px solid #fff; }
+.si-play::after { content: ''; position: absolute; top: 5px; left: 7px; border-style: solid; border-width: 4px 0 4px 7px; border-color: transparent transparent transparent var(--butter); }
 .si-mid { flex: 1; min-width: 0; }
 .si-mid select { width: 100%; height: 40px; padding: 0 8px; border: 1px solid var(--line); border-radius: 10px; background: #fff; color: var(--ink); font: inherit; font-size: 14px; }
 .si-mid small { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
@@ -559,6 +569,7 @@ body.in-panel .toast { bottom: calc(150px + var(--safe-b)); }
 .si-act .sq { width: 34px; height: 34px; }
 .si-act .sq:disabled { opacity: .3; }
 .si-add { display: block; text-align: center; cursor: pointer; margin-bottom: 12px; }
+.si-hint { margin: -4px 0 12px; }
 
 /* الرئيسية */
 .day-row { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 4px; }

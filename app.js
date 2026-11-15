@@ -33,6 +33,8 @@
     share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>',
     wallet: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M4 7h14a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a1 1 0 0 1-1-1V7Zm0 0 12-3v3"/><circle cx="16" cy="13.5" r="1.2"/></svg>',
     bank: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 9.5 12 4l9 5.5H3Z"/><path d="M5 10v7M9.5 10v7M14.5 10v7M19 10v7M3.5 20h17"/></svg>',
+    soundOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4Z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/></svg>',
+    soundOn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4Z"/><path d="M15.5 9a4.5 4.5 0 0 1 0 6M18 6.5a8 8 0 0 1 0 11"/></svg>',
     addSquare: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="4" y="4" width="16" height="16" rx="4"/><path d="M12 8.5v7M8.5 12h7"/></svg>',
   };
 
@@ -91,7 +93,7 @@
       API.get('settings?select=*'),
       API.get('categories?select=*&order=sort_order,id'),
       API.get('products?select=*'),
-      API.get('stories?select=id,title,story_items(id,image,product_id,sort_order)&order=sort_order,id&story_items.order=sort_order,id'),
+      API.get('stories?select=id,title,story_items(id,image,video,product_id,sort_order)&order=sort_order,id&story_items.order=sort_order,id'),
       API.get('delivery_zones?select=id,name,fee,note&order=sort_order,id'),
       API.get('payment_accounts?select=id,kind,title,holder_name,account_number,note&order=sort_order,id'),
     ]);
@@ -1295,8 +1297,10 @@
     if (added < o.items.length) toast('في أصناف ما عادت متوفرة، ضفنا الباقي');
   }
 
-  /* ---------- القصص ---------- */
-  let storyState = null;   // { g, i, timer, el }
+  /* ---------- القصص ----------
+     العنصر يا صورة (4.5 ثواني)، يا فيديو (عمود video، و image غلافه).
+     الفيديو بيشتغل بلا صوت، والشريط بيمشي معه، ولما يخلص منروح عالتالي. */
+  let storyState = null;   // { g, i, timer, el, muted, token }
 
   function openStory(g) {
     if (history.state && history.state.overlay) history.replaceState({ overlay: 'story' }, '');
@@ -1307,9 +1311,10 @@
     el.setAttribute('aria-modal', 'true');
     document.body.appendChild(el);
     document.body.style.overflow = 'hidden';
-    storyState = { g, i: 0, timer: null, el };
+    storyState = { g, i: 0, timer: null, el, muted: true, token: null };
     el.addEventListener('click', e => {
       if (e.target.closest('.s-close')) closeStory();
+      else if (e.target.closest('.s-sound')) toggleStorySound();
       else if (e.target.closest('.tap.next')) showStory(storyState.g, storyState.i + 1);
       else if (e.target.closest('.tap.prev')) showStory(storyState.g, storyState.i - 1);
       else if (e.target.closest('[data-order]')) {
@@ -1321,9 +1326,37 @@
     showStory(g, 0);
   }
 
+  // بيوقف الفيديو وبيلغي تحميله، لحتى ما ياكل نت عالفاضي لما ينتقل الزبون
+  function stopStoryVideo() {
+    const v = storyState && storyState.el.querySelector('video');
+    if (!v) return;
+    v.pause();
+    v.removeAttribute('src');
+    v.load();
+  }
+
+  function syncStorySound() {
+    const b = storyState && storyState.el.querySelector('.s-sound');
+    if (!b) return;
+    b.innerHTML = storyState.muted ? ICON.soundOff : ICON.soundOn;
+    b.setAttribute('aria-label', storyState.muted ? 'شغّل الصوت' : 'سكّر الصوت');
+    b.setAttribute('aria-pressed', String(!storyState.muted));
+  }
+
+  function toggleStorySound() {
+    storyState.muted = !storyState.muted;
+    const v = storyState.el.querySelector('video');
+    if (v) {
+      v.muted = storyState.muted;
+      if (v.paused) v.play().catch(() => {});
+    }
+    syncStorySound();
+  }
+
   function showStory(g, i) {
     if (!storyState) return;
     clearTimeout(storyState.timer);
+    stopStoryVideo();
     if (i >= stories[g].story_items.length) { g++; i = 0; }
     if (i < 0) { if (g > 0) { g--; i = stories[g].story_items.length - 1; } else i = 0; }
     if (g >= stories.length) { closeStory(); return; }
@@ -1336,25 +1369,73 @@
     storyState.i = i;
     const p = item.product_id ? findProduct(item.product_id) : null;
     const orderable = canOrder(p);
+    const alt = orderable ? escapeHTML(p.name) : '';
+    const isVideo = Boolean(item.video);
+    const media = isVideo
+      ? `<video src="${escapeHTML(item.video)}" poster="${escapeHTML(item.image)}" aria-label="${alt}" playsinline muted autoplay preload="auto"></video>`
+      : `<img src="${escapeHTML(item.image)}" alt="${alt}">`;
     storyState.el.setAttribute('aria-label', s.title);
     storyState.el.innerHTML = `
-      <div class="bars">${s.story_items.map((_, k) => `<i class="${k < i ? 'done' : k === i ? 'run' : ''}"><b></b></i>`).join('')}</div>
+      <div class="bars">${s.story_items.map((_, k) => `<i class="${k < i ? 'done' : k === i ? (isVideo ? 'run vid' : 'run') : ''}"><b></b></i>`).join('')}</div>
       <div class="s-head">
         <div><img src="img/logo-mark.png" alt=""><span>${escapeHTML(s.title)}</span></div>
-        <button class="s-close" aria-label="إغلاق">×</button>
+        <div class="s-btns">
+          ${isVideo ? '<button class="s-sound"></button>' : ''}
+          <button class="s-close" aria-label="إغلاق">×</button>
+        </div>
       </div>
       <div class="s-img">
-        <img src="${escapeHTML(item.image)}" alt="${orderable ? escapeHTML(p.name) : ''}">
+        ${media}
         <button class="tap prev" aria-label="السابق"></button>
         <button class="tap next" aria-label="التالي"></button>
       </div>
       <div class="s-foot">${orderable ? `<button class="btn" data-order="${p.id}">اطلب ${escapeHTML(p.name)}</button>` : ''}</div>`;
-    storyState.timer = setTimeout(() => showStory(storyState.g, storyState.i + 1), 4500);
+    const next = () => showStory(storyState.g, storyState.i + 1);
+    if (!isVideo) {
+      storyState.timer = setTimeout(next, 4500);
+      return;
+    }
+
+    // الفيديو: منتأكد إنو الحدث لسا لنفس العنصر قبل ما نتحرك
+    const token = {};
+    storyState.token = token;
+    const live = () => storyState && storyState.token === token;
+    const v = storyState.el.querySelector('video');
+    const run = storyState.el.querySelector('.bars i.run');
+    syncStorySound();
+    v.muted = storyState.muted;
+    v.addEventListener('timeupdate', () => {
+      if (live() && v.duration) run.firstElementChild.style.width = `${(v.currentTime / v.duration) * 100}%`;
+    });
+    v.addEventListener('ended', () => { if (live()) next(); });
+    // إذا الفيديو ما اشتغل: منعرض الغلاف ومنكمّل متل الصورة
+    v.addEventListener('error', () => {
+      if (!live() || !v.getAttribute('src')) return;
+      const img = document.createElement('img');
+      img.src = item.image;
+      img.alt = orderable ? p.name : '';
+      v.replaceWith(img);
+      run.classList.remove('vid');
+      run.firstElementChild.style.width = '';
+      const sound = storyState.el.querySelector('.s-sound');
+      if (sound) sound.remove();
+      storyState.timer = setTimeout(next, 4500);
+    });
+    const playing = v.play();
+    // إذا الموبايل ما سمح بالصوت، منشغّله بلا صوت
+    if (playing) playing.catch(() => {
+      if (!live() || v.muted) return;
+      storyState.muted = true;
+      v.muted = true;
+      syncStorySound();
+      v.play().catch(() => {});
+    });
   }
 
   function closeStoryDom() {
     if (!storyState) return;
     clearTimeout(storyState.timer);
+    stopStoryVideo();
     storyState.el.remove();
     storyState = null;
     document.body.style.overflow = current ? 'hidden' : '';

@@ -248,7 +248,7 @@
      مع «تقليل الحركة» أو «توفير البيانات» ما بيشتغل لحاله: بيبيّن الغلاف وزر تشغيل. */
   const HERO_FAIL_MS = 4500;
   const saveData = !!(navigator.connection && navigator.connection.saveData);
-  const hero = { list: [], i: 0, key: '', seen: false, paused: false, failT: null };
+  const hero = { list: [], i: 0, key: '', seen: null, paused: false, failT: null };
 
   function renderHero() {
     // نفس الفيديوهات: ما منقطع الفيديو اللي شغّال
@@ -293,7 +293,13 @@
   }
 
   const overlayOpen = () => document.body.style.overflow === 'hidden';
-  const heroCanRun = () => hero.list.length && hero.seen && !hero.paused && !document.hidden && !overlayOpen();
+  // إذا لسا ما وصل خبر من IntersectionObserver (أو ما بيشتغل)، منشوف مكانه بالشاشة بإيدنا
+  function heroInView() {
+    if (hero.seen !== null) return hero.seen;
+    const r = $('#hero').getBoundingClientRect();
+    return r.height > 0 && r.top < innerHeight && r.bottom > 0;
+  }
+  const heroCanRun = () => hero.list.length && heroInView() && !hero.paused && !document.hidden && !overlayOpen();
 
   function playHero() {
     const v = $('#heroVid');
@@ -337,7 +343,7 @@
     box.addEventListener('pointercancel', () => { x0 = null; }, { passive: true });
     if ('IntersectionObserver' in window) {
       new IntersectionObserver(([e]) => { hero.seen = e.isIntersecting; playHero(); }, { threshold: 0.25 }).observe(box);
-    } else hero.seen = true;
+    }
     document.addEventListener('visibilitychange', playHero);
     // النوافذ (صنف، سلة، قصة) بتسكّر تمرير الصفحة: وقتها منوقف الفيديو
     new MutationObserver(playHero).observe(document.body, { attributes: true, attributeFilter: ['style'] });

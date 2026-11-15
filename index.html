@@ -13,7 +13,7 @@
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="ضيافتي">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <link rel="stylesheet" href="styles.css?v=25">
+  <link rel="stylesheet" href="styles.css?v=26">
 </head>
 <body>
   <div class="app store">
@@ -34,6 +34,15 @@
         </div>
       </header>
       <p class="tagline">ضيافة وأزهار لمناسباتكم</p>
+      <!-- فيديوهات أول الصفحة (من اللوحة). ما في شي فوقها، والكبسة بتوقف وبتشغّل -->
+      <section class="hero" id="hero" aria-label="فيديوهات من شغلنا" hidden>
+        <div class="hero-frame">
+          <video id="heroVid" muted playsinline preload="none" disablepictureinpicture disableremoteplayback aria-hidden="true"></video>
+          <button class="hero-play" id="heroPlay" type="button" aria-label="شغّل الفيديو" hidden></button>
+        </div>
+        <div class="hero-dots" id="heroDots"></div>
+      </section>
+      <nav class="stories" id="stories" aria-label="قصص من شغلنا"></nav>
       <section class="feat" id="feat" aria-roledescription="carousel" aria-label="أصناف مميزة" hidden>
         <div class="feat-track" id="featTrack"></div>
         <div class="feat-foot">
@@ -41,7 +50,6 @@
           <button class="feat-pause" id="featPause" type="button" aria-label="وقّف التقليب" aria-pressed="false"></button>
         </div>
       </section>
-      <nav class="stories" id="stories" aria-label="قصص من شغلنا"></nav>
     </div>
 
     <div class="install" id="installBar" hidden>
@@ -97,9 +105,9 @@
     <span id="cartBarTotal"></span>
   </button>
 
-  <script src="config.js?v=25"></script>
-  <script src="api.js?v=25"></script>
-  <script src="data.js?v=25"></script>
-  <script src="app.js?v=25"></script>
+  <script src="config.js?v=26"></script>
+  <script src="api.js?v=26"></script>
+  <script src="data.js?v=26"></script>
+  <script src="app.js?v=26"></script>
 </body>
 </html>

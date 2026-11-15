@@ -47,6 +47,7 @@
   let categories = [];
   let products = [];
   let stories = [];
+  let heroVideos = [];   // فيديوهات أول الصفحة، لحد 5
   let reviews = [];   // اللي اختارها صاحب المحل للعرض
   let zones = [];                            // مناطق التوصيل
   let accounts = [];                         // حسابات شام كاش والبنوك
@@ -95,6 +96,7 @@
     // القصة اللي خلصت كل صورها (بعد أسبوع) ما بتبيّن
     stories = data.stories.filter(s => s.story_items.length);
     reviews = data.reviews || [];
+    heroVideos = data.hero || [];
     // السلة المحفوظة: إذا تغيّرت أقل كمية أو الخطوة، منصلّح الكميات قبل ما توصل لـ place_order
     cart = cart.map(l => {
       const p = findProduct(l.id);
@@ -109,9 +111,11 @@
 
   // بيجيب كل الكتالوج من Supabase بنفس الوقت
   async function fetchCatalog() {
-    const [revs, settingsRows, cats, prods, strs, zs, accs] = await Promise.all([
+    const [revs, hero, settingsRows, cats, prods, strs, zs, accs] = await Promise.all([
       // التقييمات شغلة إضافية: إذا فشلت، الكتالوج لازم يضل يفتح
       API.rpc('get_public_reviews', {}).catch(() => []),
+      // الفيديوهات كمان شغلة إضافية
+      API.get('hero_videos?select=id,video,poster&order=sort_order,id').catch(() => []),
       API.get('settings?select=*'),
       API.get('categories?select=*&order=sort_order,id'),
       API.get('products?select=*'),
@@ -119,7 +123,7 @@
       API.get('delivery_zones?select=id,name,fee,note&order=sort_order,id'),
       API.get('payment_accounts?select=id,kind,title,holder_name,account_number,note&order=sort_order,id'),
     ]);
-    return { settings: settingsRows[0], categories: cats, products: prods, stories: strs, reviews: revs, zones: zs, accounts: accs, at: Date.now() };
+    return { settings: settingsRows[0], categories: cats, products: prods, stories: strs, reviews: revs, hero, zones: zs, accounts: accs, at: Date.now() };
   }
 
   let lastFetch = 0;
@@ -193,7 +197,12 @@
 
   function renderGrid() {
     let list = products;
-    if (activeCat !== 'all') list = list.filter(p => p.category_id === activeCat);
+    if (activeCat !== 'all') {
+      // الصنف بيطلع بقسمه الأساسي وبالأقسام الإضافية (extra_categories). أصناف القسم نفسه أول
+      const main = list.filter(p => p.category_id === activeCat);
+      const extra = list.filter(p => p.category_id !== activeCat && (p.extra_categories || []).includes(activeCat));
+      list = main.concat(extra);
+    }
     if (query) {
       const q = normalizeAr(query);
       list = list.filter(p => normalizeAr(p.name + ' ' + (p.description || '')).includes(q));
@@ -229,6 +238,109 @@
         <div class="frame"><img src="${escapeHTML(s.story_items[0].image)}" alt=""></div>
         <span>${escapeHTML(s.title)}</span>
       </button>`).join('');
+  }
+
+
+  /* ---------- فيديوهات أول الصفحة ----------
+     لحد 5 فيديوهات ورا بعض، بلا صوت، وما في شي فوقها.
+     لتوفير الـ5GB تبع Supabase: بيتحمّل الفيديو اللي عم يبيّن بس، ولما ننتقل منلغي تحميل اللي قبله.
+     بيوقف إذا: الفيديو مو بالشاشة، أو الصفحة بالخلفية، أو في نافذة مفتوحة فوقه.
+     مع «تقليل الحركة» أو «توفير البيانات» ما بيشتغل لحاله: بيبيّن الغلاف وزر تشغيل. */
+  const HERO_FAIL_MS = 4500;
+  const saveData = !!(navigator.connection && navigator.connection.saveData);
+  const hero = { list: [], i: 0, key: '', seen: false, paused: false, failT: null };
+
+  function renderHero() {
+    // نفس الفيديوهات: ما منقطع الفيديو اللي شغّال
+    const key = heroVideos.map(v => v.id + v.video).join('|');
+    if (key === hero.key) return;
+    hero.key = key;
+    hero.list = heroVideos;
+    hero.paused = reduceMotion.matches || saveData;
+    const n = hero.list.length;
+    $('#hero').hidden = !n;
+    $('.tagline').hidden = n > 0;
+    $('#heroDots').innerHTML = n > 1 ? hero.list.map((v, i) =>
+      `<button class="hero-dot" type="button" data-hdot="${i}" aria-label="الفيديو ${i + 1} من ${n}"></button>`).join('') : '';
+    if (n) showHero(0);
+    else stopHero();
+  }
+
+  function stopHero() {
+    clearTimeout(hero.failT);
+    const v = $('#heroVid');
+    v.pause();
+    v.removeAttribute('src');
+    v.load();   // منلغي التحميل
+  }
+
+  function showHero(i) {
+    clearTimeout(hero.failT);
+    hero.i = (i + hero.list.length) % hero.list.length;
+    const it = hero.list[hero.i];
+    const v = $('#heroVid');
+    v.poster = it.poster;
+    v.loop = hero.list.length === 1;
+    if (v.dataset.src && v.dataset.src !== it.video) {
+      delete v.dataset.src;
+      v.pause();
+      v.removeAttribute('src');
+      v.load();
+    }
+    document.querySelectorAll('#heroDots .hero-dot').forEach((d, k) =>
+      d.setAttribute('aria-current', String(k === hero.i)));
+    playHero();
+  }
+
+  const overlayOpen = () => document.body.style.overflow === 'hidden';
+  const heroCanRun = () => hero.list.length && hero.seen && !hero.paused && !document.hidden && !overlayOpen();
+
+  function playHero() {
+    const v = $('#heroVid');
+    $('#heroPlay').hidden = !hero.list.length || !hero.paused;
+    if (!heroCanRun()) { if (!v.paused) v.pause(); return; }
+    const it = hero.list[hero.i];
+    if (v.dataset.src !== it.video) { v.dataset.src = it.video; v.src = it.video; }
+    v.muted = true;   // الآيفون ما بيشغّل لحاله إلا الفيديو بلا صوت
+    v.play().catch(() => {});
+  }
+
+  function bindHero() {
+    const box = $('#hero');
+    const v = $('#heroVid');
+    v.muted = true;
+    v.defaultMuted = true;
+    v.addEventListener('ended', () => { if (hero.list.length > 1) showHero(hero.i + 1); });
+    // فيديو خربان: منبيّن الغلاف شوي ومننتقل
+    v.addEventListener('error', () => {
+      if (!v.dataset.src || hero.list.length < 2) return;
+      clearTimeout(hero.failT);
+      hero.failT = setTimeout(() => showHero(hero.i + 1), HERO_FAIL_MS);
+    });
+    box.addEventListener('click', e => {
+      const dot = e.target.closest('[data-hdot]');
+      if (dot) { showHero(Number(dot.dataset.hdot)); return; }
+      // كبسة عالفيديو بتوقفه أو بتشغّله
+      if (hero.swiped) { hero.swiped = false; return; }   // التقليب مو كبسة
+      if (e.target.closest('.hero-frame')) { hero.paused = !hero.paused; playHero(); }
+    });
+    // التقليب بالإصبع: لليمين الجاي (الصفحة من اليمين لليسار)
+    let x0 = null;
+    box.addEventListener('pointerdown', e => { x0 = e.clientX; }, { passive: true });
+    box.addEventListener('pointerup', e => {
+      if (x0 === null || hero.list.length < 2) return;
+      const dx = e.clientX - x0;
+      x0 = null;
+      hero.swiped = Math.abs(dx) > 40;
+      if (hero.swiped) showHero(hero.i + (dx > 0 ? 1 : -1));
+    }, { passive: true });
+    box.addEventListener('pointercancel', () => { x0 = null; }, { passive: true });
+    if ('IntersectionObserver' in window) {
+      new IntersectionObserver(([e]) => { hero.seen = e.isIntersecting; playHero(); }, { threshold: 0.25 }).observe(box);
+    } else hero.seen = true;
+    document.addEventListener('visibilitychange', playHero);
+    // النوافذ (صنف، سلة، قصة) بتسكّر تمرير الصفحة: وقتها منوقف الفيديو
+    new MutationObserver(playHero).observe(document.body, { attributes: true, attributeFilter: ['style'] });
   }
 
   // النجوم للعرض: الممتلئة، وبعدها الفاضية
@@ -417,6 +529,7 @@
     renderStories();
     renderReviews();
     renderFeatured();
+    renderHero();
     updateCartUI();
   }
 
@@ -1694,6 +1807,7 @@
   /* ---------- الأحداث ---------- */
   function bind() {
     bindFeatured();
+    bindHero();
     $('#chips').addEventListener('click', e => {
       const b = e.target.closest('[data-cat]');
       if (!b) return;

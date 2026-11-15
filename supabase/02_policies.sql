@@ -43,6 +43,12 @@ grant select on public.settings, public.categories, public.products,
                 public.stories, public.story_items, public.delivery_zones,
                 public.payment_accounts
   to anon;
+-- فيديوهات أول الصفحة (ملف 19): إذا الجدول موجود، لازم يضل للقراءة بعد ما ينعاد هالملف
+do $$ begin
+  if to_regclass('public.hero_videos') is not null then
+    grant select on public.hero_videos to anon;
+  end if;
+end $$;
 
 -- authenticated عنده كل الصلاحيات، بس الـ RLS تحت بيحصرها بالأدمن.
 grant select, insert, update, delete on all tables in schema public to authenticated;

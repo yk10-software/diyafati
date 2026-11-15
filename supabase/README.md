@@ -22,6 +22,8 @@
 | `16_day_hours.sql` | دوام مختلف لبعض الأيام، وبيحط دوام الجمعة من 5:30 لـ 9:30 المسا (بعده لازم تعيد تشغيل `03_functions.sql`) |
 | `17_story_videos.sql` | فيديو بالقصص: عمود `video` بـ `story_items`، وسطل `videos` (MP4 بس، لحد 10MB) |
 | `18_box_fill.sql` | البوكس المعبّى: `is_boxes` و `box_fill` بالأقسام، و `box_no` و `in_box` بأسطر الطلب (بعده لازم تعيد تشغيل `03_functions.sql`) |
+| `19_hero_videos.sql` | فيديوهات أول الصفحة: جدول `hero_videos` (لحد 5، بـ trigger)، والزائر بيقرأه بس. بعد `17` |
+| `20_extra_categories.sql` | الصنف بأكتر من قسم: `extra_categories` بالأصناف، وبتنشال لحالها لما ينحذف القسم |
 
 كل الملفات آمنة لو انشغّلت مرتين.
 

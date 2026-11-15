@@ -1,5 +1,5 @@
 /* =========================================================
-   ضيافتي — لوحة التحكم: شاشة الأقسام (والقصص تحتها، من admin-stories.js)
+   ضيافتي — لوحة التحكم: شاشة الأقسام (وتحتها الفيديوهات من admin-hero.js، والقصص من admin-stories.js)
    إضافة، تعديل، حذف، وترتيب بالسحب (بالإصبع أو الماوس أو أسهم الكيبورد).
    ========================================================= */
 (() => {
@@ -7,7 +7,8 @@
 
   const { $, $$, state, icon, db, fail, toast } = A;
 
-  const countIn = id => state.products.filter(p => p.category_id === id).length;
+  // مع الأصناف اللي بتطلع بالقسم كمان (extra_categories)
+  const countIn = id => state.products.filter(p => p.category_id === id || (p.extra_categories || []).includes(id)).length;
 
   A.views.categories = {
     title: 'الأقسام والقصص',
@@ -21,11 +22,14 @@
           <button class="btn-sm" type="submit">إضافة</button>
         </form>
         <div class="p-pad">
+          <div class="sec"><h2>فيديوهات أول الصفحة</h2><small>لحد 5، بتشتغل ورا بعض</small></div>
+          <div id="hList"></div>
           <div class="sec"><h2>القصص</h2><small>بتختفي لحالها بعد أسبوع</small></div>
           <div class="a-stories" id="sList"></div>
         </div>
       `;
       renderList();
+      A.mountHero();
       A.mountStories();
 
       $('#cNew', el).addEventListener('submit', async e => {
@@ -219,7 +223,7 @@
   /* ---------- حذف قسم ---------- */
   function openDelete(id) {
     const c = state.cats.find(x => x.id === id);
-    const n = countIn(id);
+    const n = state.products.filter(p => p.category_id === id).length;   // بس اللي هاد قسمهن الأساسي
     const sheet = A.openSheet(`
       <div class="sheet-head"><h2>حذف «${escapeHTML(c.name)}»؟</h2><button class="close" aria-label="إغلاق">×</button></div>
       <p>${n
@@ -235,7 +239,10 @@
         if (c.image) A.removeImages([c.image]);
         state.cats = state.cats.filter(x => x.id !== id);
         // قاعدة البيانات خلّت category_id فاضي، منعمل نفس الشي هون
-        state.products.forEach(p => { if (p.category_id === id) p.category_id = null; });
+        state.products.forEach(p => {
+          if (p.category_id === id) p.category_id = null;
+          if (p.extra_categories) p.extra_categories = p.extra_categories.filter(x => x !== id);
+        });
         A.closeSheet();
         renderList();
         toast('انحذف القسم');

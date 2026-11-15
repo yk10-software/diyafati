@@ -67,10 +67,16 @@
       (hasNone ? chip('none', 'بلا قسم') : '');
   }
 
+  // أسماء الأقسام الإضافية، مفصولة بفاصلة
+  const extraNames = p => (p.extra_categories || [])
+    .filter(id => id !== p.category_id)
+    .map(id => (state.cats.find(c => c.id === id) || {}).name)
+    .filter(Boolean).join('، ');
+
   function renderList() {
     let list = state.products;
     if (catFilter === 'none') list = list.filter(p => p.category_id == null);
-    else if (catFilter !== 'all') list = list.filter(p => p.category_id === catFilter);
+    else if (catFilter !== 'all') list = list.filter(p => p.category_id === catFilter || (p.extra_categories || []).includes(catFilter));
     if (query) {
       const q = normalizeAr(query);
       list = list.filter(p => normalizeAr(p.name).includes(q));
@@ -87,7 +93,7 @@
         ${A.thumb(p.images[0])}
         <div class="a-info">
           <b>${escapeHTML(p.name)}${!p.available ? '<span class="tag">خلص</span>' : ''}${p.hidden ? '<span class="tag muted">مخفي</span>' : ''}${p.featured ? '<span class="tag">مميز</span>' : ''}</b>
-          <span>${escapeHTML(catName(p.category_id))}</span>
+          <span>${escapeHTML(catName(p.category_id))}${extraNames(p) ? ` <small>(وكمان بـ ${escapeHTML(extraNames(p))})</small>` : ''}</span>
           <span class="price">${effectivePrice(p) !== p.price ? `<s>${formatPrice(p.price)}</s> ` : ''}${formatPrice(effectivePrice(p))} <small>/ ${escapeHTML(p.unit)}</small></span>
         </div>
         <div class="a-actions">
@@ -172,6 +178,12 @@
             <option value="" ${p.category_id == null ? 'selected' : ''}>بلا قسم</option>
           </select>
         </label>
+        <div class="field xcats-f">
+          <span>بيطلع كمان بـ <small>(اختياري، بنفس السعر والصور)</small></span>
+          <div class="xcats" id="xCats">
+            ${state.cats.map(c => `<label class="xc" data-xc="${c.id}"><input type="checkbox" name="xcat" value="${c.id}" ${(p.extra_categories || []).includes(c.id) ? 'checked' : ''}>${escapeHTML(c.name)}</label>`).join('')}
+          </div>
+        </div>
         <label class="field">
           <span>الوصف <small>(اختياري)</small></span>
           <textarea name="description" rows="3" maxlength="400">${escapeHTML(p.description)}</textarea>
@@ -191,6 +203,13 @@
     `);
     const form = $('#pForm', sheet);
     const f = form.elements;   // form.name و form.hidden محجوزين للفورم نفسه، فمنقرأ الحقول من elements
+
+    // القسم الأساسي ما بيطلع بقائمة «كمان بـ»
+    function syncExtra() {
+      form.querySelectorAll('[data-xc]').forEach(l => { l.hidden = l.dataset.xc === f.category_id.value; });
+    }
+    syncExtra();
+    f.category_id.addEventListener('change', syncExtra);
     A.clearOnInput(form, $('#pMsg', sheet));
 
     function renderImgs() {
@@ -259,6 +278,8 @@
           sale_until: sale === null ? null : A.endOfDay(f.sale_until.value),
           unit: f.unit.value,
           category_id: f.category_id.value ? Number(f.category_id.value) : null,
+          extra_categories: [...form.querySelectorAll('input[name="xcat"]:checked')]
+            .map(x => Number(x.value)).filter(id => id !== Number(f.category_id.value)),
           description: f.description.value.trim(),
           images: urls,
           available: f.available.checked,

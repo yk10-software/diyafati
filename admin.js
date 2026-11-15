@@ -8,6 +8,7 @@
      admin-coupons.js    الكوبونات
      admin-products.js   الأصناف
      admin-categories.js الأقسام
+     admin-hero.js       فيديوهات أول الصفحة (تحت الأقسام)
      admin-stories.js    القصص (تحت الأقسام)
      admin-reviews.js    التقييمات
      admin-help.js       المساعدة
@@ -21,7 +22,7 @@ const A = (() => {
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 
   // كل بيانات المحل بعد التحميل
-  const state = { settings: null, cats: [], products: [], zones: [], accounts: [], coupons: [], stories: [], reviewStamps: [], orders: [] };
+  const state = { settings: null, cats: [], products: [], zones: [], accounts: [], coupons: [], stories: [], heroVideos: [], reviewStamps: [], orders: [] };
   const views = {};          // كل ملف شاشة بيسجّل حاله هون
   let user = null;
   let liveStarted = false;   // الـ realtime للطلبات بيشتغل مرة وحدة
@@ -71,7 +72,7 @@ const A = (() => {
   const loadReviewStamps = () => db(sb.from('reviews').select('created_at').order('created_at', { ascending: false }).limit(200));
 
   async function loadAll() {
-    const [settings, cats, products, zones, accounts, coupons, stories, reviewStamps, orders] = await Promise.all([
+    const [settings, cats, products, zones, accounts, coupons, stories, heroVideos, reviewStamps, orders] = await Promise.all([
       db(sb.from('settings').select('*').eq('id', 1).single()),
       db(sb.from('categories').select('*').order('sort_order').order('id')),
       db(sb.from('products').select('*').order('id', { ascending: false })),
@@ -79,10 +80,11 @@ const A = (() => {
       db(sb.from('payment_accounts').select('*').order('sort_order').order('id')),
       db(sb.from('coupons').select('*').order('created_at', { ascending: false })),
       db(sb.from('stories').select('*, story_items(*)').order('sort_order').order('id')),
+      db(sb.from('hero_videos').select('*').order('sort_order').order('id')),
       loadReviewStamps(),
       loadOrders(),
     ]);
-    Object.assign(state, { settings, cats, products, zones, accounts, coupons, stories, reviewStamps, orders });
+    Object.assign(state, { settings, cats, products, zones, accounts, coupons, stories, heroVideos, reviewStamps, orders });
   }
 
   /* ---------- التنقل بين الشاشات (#home، #orders، #products، #categories، #settings، #coupons، #reviews، #help) ---------- */

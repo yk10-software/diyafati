@@ -1,10 +1,10 @@
 /* ضيافتي — بيخلّي التطبيق يفتح بسرعة وحتى لو النت ضعيف.
    كل ما تعدّل ملفات وترفعها، كبّر رقم النسخة هون، وكمان رقم ?v= بـ index.html و admin.html وبالقائمة تحت. */
-const CACHE = 'diyafati-v30';
+const CACHE = 'diyafati-v31';
 const SHELL = [
-  './', 'index.html', 'admin.html', 'styles.css?v=28', 'data.js?v=28', 'app.js?v=28', 'admin.js?v=28',
-  'reset.html', 'privacy.html', 'config.js?v=28', 'api.js?v=28', 'supa.js?v=28', 'reset.js?v=28',
-  'admin-home.js?v=28', 'admin-orders.js?v=28', 'admin-coupons.js?v=28', 'admin-products.js?v=28', 'admin-categories.js?v=28', 'admin-hero.js?v=28', 'admin-stories.js?v=28', 'admin-reviews.js?v=28', 'admin-help.js?v=28', 'admin-settings.js?v=28', 'admin-push.js?v=28',
+  './', 'index.html', 'admin.html', 'styles.css?v=29', 'data.js?v=29', 'app.js?v=29', 'admin.js?v=29',
+  'reset.html', 'privacy.html', 'config.js?v=29', 'api.js?v=29', 'supa.js?v=29', 'reset.js?v=29',
+  'admin-home.js?v=29', 'admin-orders.js?v=29', 'admin-coupons.js?v=29', 'admin-products.js?v=29', 'admin-categories.js?v=29', 'admin-hero.js?v=29', 'admin-stories.js?v=29', 'admin-reviews.js?v=29', 'admin-help.js?v=29', 'admin-settings.js?v=29', 'admin-push.js?v=29',
   'manifest.webmanifest', 'admin.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png', 'icons/favicon-64.png',
   'img/logo-mark.png', 'img/logo-word.png', 'img/logo-full.png',

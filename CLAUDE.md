@@ -70,7 +70,7 @@
 - ✅ ملفات `supabase/01` لـ `06` انشغّلت كلها بالـ SQL Editor (Success)، و`06_test` نجح بلا FAIL.
 - ✅ حساب صاحب المحل انعمل من Authentication ← Users (Auto confirm)، و`05_make_admin` طلّع صف واحد.
 - ✅ سكّرنا **Allow new users to sign up** و **Anonymous sign-ins**.
-- ✅ Security Advisor: 0 أخطاء. صلّحنا 4 تحذيرات (`07_hardening.sql`)، والـ15 الباقيين متوقعين (مشروحين بـ `supabase/README.md`). آخر فحص 27/11/2026 بعد ملفات 19 و20، وما طلع شي جديد منهن.
+- ✅ Security Advisor: 0 أخطاء. صلّحنا 4 تحذيرات (`07_hardening.sql`)، والباقيين متوقعين (مشروحين بـ `supabase/README.md`). بعد `21_rate_limits.sql` (انشغّل على Supabase بـ 27/11/2026) لازم يكونوا 14: `is_admin` ما عاد للزائر، وحد 20 محاولة كوبون كل 10 دقايق من نفس الجهاز (بصمة IP بـ `rate_hits`، بتنمسح بعد ساعة، ومذكورة بـ `privacy.html`). `place_order` بيرجّع `{ error }` لأخطاء الكوبون بدل exception، والواجهة بتعاملها متل الخطأ.
 - **قاعدة:** `05_make_admin.sql` بالريبو بيضل فيه `owner@example.com` دايماً. الإيميل الحقيقي بينكتب بالـ SQL Editor بس.
 - ✅ انكتب `config.js` و `supa.js` (supabase-js 2.118.0 من jsDelivr مع integrity)، وتسجيل الدخول باللوحة (دخول، فحص `is_admin`، تغيير كلمة السر، نسيت كلمة السر ← `reset.html`).
 - ✅ المفاتيح بـ `config.js`، والدخول وتغيير كلمة السر ونسيت كلمة السر انجرّبوا كلهن ونجحوا. الحساب التجريبي انحذف.

@@ -1,0 +1,6 @@
+# ضيافتي: كل الموقع مفتوح لمحركات البحث، إلا لوحة التحكم
+User-agent: *
+Disallow: /admin.html
+Disallow: /reset.html
+
+Sitemap: https://diyafatisy.com/sitemap.xml

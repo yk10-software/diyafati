@@ -10,6 +10,20 @@
 [context.production]
   command = "echo 'production deploy ممنوع على dev، شوف CLAUDE.md' && exit 1"
 
+# حماية عامة لكل الصفحات (من فحص ما قبل الإطلاق):
+# nosniff: المتصفح ما بيخمّن نوع الملف. frame-ancestors: ما حدا بيحط الموقع جوا موقع تاني.
+# Referrer-Policy: ما منبعت الرابط الكامل لمواقع تانية. Permissions-Policy: ما منطلب كاميرا ولا مايك ولا موقع.
+# ما في script-src بالـ CSP لأنو في سكربتات صغيرة جوا admin.html و privacy.html و reset.html.
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    Permissions-Policy = "camera=(), microphone=(), geolocation=(), payment=()"
+    Content-Security-Policy = "frame-ancestors 'none'; object-src 'none'; base-uri 'self'"
+    Strict-Transport-Security = "max-age=31536000"
+
 # الـ service worker لازم ما ينحفظ بالكاش، وإلا التحديثات ما بتوصل للموبايلات
 [[headers]]
   for = "/sw.js"

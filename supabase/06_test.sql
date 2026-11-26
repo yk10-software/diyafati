@@ -62,17 +62,14 @@ begin
     if sqlerrm <> 'invalid_qty' then raise; end if;
   end;
 
-  -- 4) كوبون مو موجود لازم ينرفض
-  begin
-    perform public.place_order(jsonb_build_object(
+  -- 4) كوبون مو موجود لازم ينرفض (بيرجع { error } بدل exception، 21_rate_limits.sql)
+  if coalesce(public.place_order(jsonb_build_object(
       'name', 'تجربة', 'phone', '0944000002', 'zone_id', v_zone, 'address', 'دمشق',
       'coupon_code', 'NOPE-123',
       'items', jsonb_build_array(jsonb_build_object('product_id', v_product, 'qty', 1))
-    ));
+    ))->>'error', '') <> 'invalid_coupon' then
     raise exception 'FAIL: قبل كوبون مو موجود';
-  exception when others then
-    if sqlerrm <> 'invalid_coupon' then raise; end if;
-  end;
+  end if;
 
   -- 5) الزبون ما لازم يقرأ الطلبات ولا الكوبونات مباشرة
   begin

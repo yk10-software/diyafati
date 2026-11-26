@@ -312,15 +312,20 @@ begin
   end if;
 
   -- الكوبون (for update لحتى ما يتجاوز max_uses لو انطلب طلبين بنفس اللحظة)
+  -- الكوبون غلط: منرجّع خطأ بدل exception، لحتى المحاولة تنحسب (rate_limited)
+  -- وما تنمسح مع الـ rollback. الواجهة بتعامل { error } متل الخطأ العادي.
   if v_coupon is not null then
+    if public.rate_limited('coupon', 20, interval '10 minutes') then
+      return jsonb_build_object('error', 'too_many_tries');
+    end if;
     select * into c from public.coupons
     where upper(code) = v_coupon
       and active
       and (expires_at is null or expires_at > now())
       and (max_uses is null or used_count < max_uses)
     for update;
-    if not found then raise exception 'invalid_coupon'; end if;
-    if v_subtotal < c.min_total then raise exception 'coupon_min_total'; end if;
+    if not found then return jsonb_build_object('error', 'invalid_coupon'); end if;
+    if v_subtotal < c.min_total then return jsonb_build_object('error', 'coupon_min_total'); end if;
 
     v_discount := case c.kind
       when 'percent' then floor(v_subtotal * c.value / 100.0)::bigint
@@ -449,7 +454,6 @@ $$;
 create or replace function public.check_coupon(p_code text, p_subtotal bigint)
 returns jsonb
 language plpgsql
-stable
 security definer
 set search_path = public
 as $$
@@ -457,6 +461,10 @@ declare
   c public.coupons;
   v_discount bigint;
 begin
+  -- 20 محاولة كل 10 دقايق من نفس الجهاز (21_rate_limits.sql)
+  if public.rate_limited('coupon', 20, interval '10 minutes') then
+    return jsonb_build_object('ok', false, 'reason', 'too_many_tries');
+  end if;
   select * into c from public.coupons
   where upper(code) = upper(btrim(coalesce(p_code, '')))
     and active

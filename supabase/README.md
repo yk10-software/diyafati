@@ -24,6 +24,7 @@
 | `18_box_fill.sql` | البوكس المعبّى: `is_boxes` و `box_fill` بالأقسام، و `box_no` و `in_box` بأسطر الطلب (بعده لازم تعيد تشغيل `03_functions.sql`) |
 | `19_hero_videos.sql` | فيديوهات أول الصفحة: جدول `hero_videos` (لحد 5، بـ trigger)، والزائر بيقرأه بس. بعد `17` |
 | `20_extra_categories.sql` | الصنف بأكتر من قسم: `extra_categories` بالأصناف، وبتنشال لحالها لما ينحذف القسم |
+| `21_rate_limits.sql` | `is_admin` للمسجّلين بس، وحد 20 محاولة كوبون كل 10 دقايق من نفس الجهاز (`rate_hits`). بعده لازم تعيد تشغيل `03_functions.sql` |
 
 كل الملفات آمنة لو انشغّلت مرتين.
 
@@ -81,7 +82,7 @@ select created, status_code, content, error_msg from net._http_response order by
 - **GitHub بيوقّف الجدولة** بالريبو العام إذا ضل 60 يوم بلا أي نشاط، وبيبعت إيميل. وقتها بينكبس **Enable workflow** من تبويب Actions.
 
 ## Security Advisor: التحذيرات اللي بتضل (متوقعة)
-العدد المتوقع هلق **15 تحذير و 0 أخطاء** (انفحص بـ 27/11/2026): كل دالة من السبعة تحت بتطلع مرتين (مرة لـ `anon` ومرة لـ `authenticated`)، وتحذير كلمات السر المسرّبة. وكلهن مقصودين:
+العدد المتوقع هلق **14 تحذير و 0 أخطاء** (بعد `21_rate_limits.sql`): كل دالة من الستة تحت بتطلع مرتين (مرة لـ `anon` ومرة لـ `authenticated`)، و`is_admin` مرة وحدة لـ `authenticated`، وتحذير كلمات السر المسرّبة. وممكن يطلع Info إنو `rate_hits` فيه RLS بلا سياسات، وهاد مقصود (ما حدا بيوصله إلا الدوال). وكلهن مقصودين:
 - **SECURITY DEFINER** على `place_order` و `get_order` و `get_orders` و `check_coupon` و `submit_review` و `get_public_reviews` و `is_admin`.
   هاد هو التصميم: الزبون ما إله صلاحية عالجداول، وهالدوال هي الباب الوحيد، وكل وحدة بتفحص مدخلاتها (التوكن، الأسعار، الكوبون...).
 - **Leaked Password Protection**: ميزة بالباقة المدفوعة بس. بدالها: كلمة سر صاحب المحل قوية (12 حرف وأكتر).

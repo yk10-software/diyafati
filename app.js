@@ -944,6 +944,7 @@
     invalid_payment: 'اختار طريقة الدفع.',
     payment_unavailable: 'طريقة الدفع هي ما عادت متاحة، اختار غيرها.',
     invalid_coupon: 'الكود مو صحيح أو خلصت مدته.',
+    too_many_tries: 'جرّبت أكواد كتير. استنى 10 دقايق وجرّب كمان مرة.',
     coupon_min_total: 'مجموع الطلب أقل من الحد الأدنى لهالكود.',
   };
   function orderError(err) {
@@ -1191,7 +1192,8 @@
           showTotals();
         } else {
           msg.textContent = r.reason === 'coupon_min_total'
-            ? `هالكود لطلب من ${formatPrice(r.min_total)} وفوق.` : ORDER_ERRORS.invalid_coupon;
+            ? `هالكود لطلب من ${formatPrice(r.min_total)} وفوق.`
+            : ORDER_ERRORS[r.reason] || ORDER_ERRORS.invalid_coupon;
         }
       } catch (err) {
         console.error(err);
@@ -1329,6 +1331,8 @@
           ...(l.fill ? { fill: l.fill.map(f => ({ product_id: f.id, qty: f.qty })) } : {}),
         })),
       } });
+      // أخطاء الكوبون بترجع { error } مو exception (لحتى تنحسب المحاولة بالسيرفر)
+      if (r && r.error) throw new Error(r.error);
       orderPlaced(r);
     } catch (err) {
       btn.disabled = false;

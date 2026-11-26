@@ -19,7 +19,7 @@ as $$
   select exists (select 1 from public.admins where user_id = auth.uid());
 $$;
 revoke all on function public.is_admin() from public;
-grant execute on function public.is_admin() to anon, authenticated;
+grant execute on function public.is_admin() to authenticated;   -- الزائر ما بيحتاجها (21_rate_limits.sql)
 
 -- ---------- شغّل RLS على كل الجداول ----------
 alter table public.admins             enable row level security;

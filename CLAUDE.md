@@ -70,7 +70,7 @@
 - ✅ ملفات `supabase/01` لـ `06` انشغّلت كلها بالـ SQL Editor (Success)، و`06_test` نجح بلا FAIL.
 - ✅ حساب صاحب المحل انعمل من Authentication ← Users (Auto confirm)، و`05_make_admin` طلّع صف واحد.
 - ✅ سكّرنا **Allow new users to sign up** و **Anonymous sign-ins**.
-- ✅ Security Advisor: 0 أخطاء. صلّحنا 4 تحذيرات (`07_hardening.sql`)، والـ13 الباقيين متوقعين (مشروحين بـ `supabase/README.md`).
+- ✅ Security Advisor: 0 أخطاء. صلّحنا 4 تحذيرات (`07_hardening.sql`)، والـ15 الباقيين متوقعين (مشروحين بـ `supabase/README.md`). آخر فحص 27/11/2026 بعد ملفات 19 و20، وما طلع شي جديد منهن.
 - **قاعدة:** `05_make_admin.sql` بالريبو بيضل فيه `owner@example.com` دايماً. الإيميل الحقيقي بينكتب بالـ SQL Editor بس.
 - ✅ انكتب `config.js` و `supa.js` (supabase-js 2.118.0 من jsDelivr مع integrity)، وتسجيل الدخول باللوحة (دخول، فحص `is_admin`، تغيير كلمة السر، نسيت كلمة السر ← `reset.html`).
 - ✅ المفاتيح بـ `config.js`، والدخول وتغيير كلمة السر ونسيت كلمة السر انجرّبوا كلهن ونجحوا. الحساب التجريبي انحذف.

@@ -81,7 +81,7 @@ select created, status_code, content, error_msg from net._http_response order by
 - **GitHub بيوقّف الجدولة** بالريبو العام إذا ضل 60 يوم بلا أي نشاط، وبيبعت إيميل. وقتها بينكبس **Enable workflow** من تبويب Actions.
 
 ## Security Advisor: التحذيرات اللي بتضل (متوقعة)
-بعد `07_hardening.sql` بيضل 13 تحذير (و 0 أخطاء)، وبعد `11_public_reviews.sql` ممكن يصيروا 14 بسبب `get_public_reviews`، وكلهن مقصودين:
+العدد المتوقع هلق **15 تحذير و 0 أخطاء** (انفحص بـ 27/11/2026): كل دالة من السبعة تحت بتطلع مرتين (مرة لـ `anon` ومرة لـ `authenticated`)، وتحذير كلمات السر المسرّبة. وكلهن مقصودين:
 - **SECURITY DEFINER** على `place_order` و `get_order` و `get_orders` و `check_coupon` و `submit_review` و `get_public_reviews` و `is_admin`.
   هاد هو التصميم: الزبون ما إله صلاحية عالجداول، وهالدوال هي الباب الوحيد، وكل وحدة بتفحص مدخلاتها (التوكن، الأسعار، الكوبون...).
 - **Leaked Password Protection**: ميزة بالباقة المدفوعة بس. بدالها: كلمة سر صاحب المحل قوية (12 حرف وأكتر).

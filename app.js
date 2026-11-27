@@ -102,7 +102,7 @@
       const p = findProduct(l.id);
       if (!p) return l;
       if (l.fill) return { ...l, qty: 1, fill: l.fill.map(f => ({ ...f, qty: snapFill(f.qty) })) };
-      return { ...l, qty: snapQty(l.qty, p.unit) };
+      return { ...l, qty: snapQty(l.qty, p) };
     });
     ls.set(CART_KEY, cart);
     zones = data.zones || [];
@@ -607,26 +607,29 @@
   });
 
   /* ---------- صفحة الصنف ---------- */
-  // أقل كمية: بالكيلو حسب إعدادات المحل (نص كيلو أو أكتر)، وبالقطعة وحدة
-  const minQty = unit => unit === 'كيلو' ? Math.max(0.25, Number(settings.min_kilo) || 0.5) : 1;
-  const stepOf = unit => qtyStep(unit, minQty(unit));
+  // أقل كمية والخطوة: إذا الصنف إله كمية خاصة (qty_step: ربع أو نص أو كيلو) هي أقل كمية وهي الخطوة.
+  // وإلا بالكيلو حسب إعدادات المحل، وبالقطعة وحدة. (نفس الحساب بـ place_order)
+  const minQty = p => p.unit !== 'كيلو' ? 1
+    : Number(p.qty_step) || Math.max(0.25, Number(settings.min_kilo) || 0.5);
+  const stepOf = p => p.unit !== 'كيلو' ? 1
+    : Number(p.qty_step) || qtyStep(p.unit, minQty(p));
   // بيرجّع الكمية لأقرب قيمة مسموحة لفوق (مثلاً إذا المحل غيّر أقل كمية)
-  const snapQty = (q, unit) => Math.min(100, Math.max(minQty(unit), Math.ceil(Number(q) / stepOf(unit) - 1e-9) * stepOf(unit)));
+  const snapQty = (q, p) => Math.min(100, Math.max(minQty(p), Math.ceil(Number(q) / stepOf(p) - 1e-9) * stepOf(p)));
 
-  function stepperHTML(qty, unit, small) {
+  function stepperHTML(qty, p, small) {
     return `
       <div class="stepper${small ? ' small' : ''}">
         <button type="button" data-step="1" aria-label="زيادة">+</button>
-        <output>${formatQty(qty, unit)}</output>
-        <button type="button" data-step="-1" aria-label="تنقيص" ${qty <= minQty(unit) ? 'disabled' : ''}>−</button>
+        <output>${formatQty(qty, p.unit)}</output>
+        <button type="button" data-step="-1" aria-label="تنقيص" ${qty <= minQty(p) ? 'disabled' : ''}>−</button>
       </div>`;
   }
-  const stepQty = (qty, unit, dir) => Math.min(100, Math.max(minQty(unit), Math.round((qty + stepOf(unit) * dir) / stepOf(unit)) * stepOf(unit)));
+  const stepQty = (qty, p, dir) => Math.min(100, Math.max(minQty(p), Math.round((qty + stepOf(p) * dir) / stepOf(p)) * stepOf(p)));
 
   function openProduct(id) {
     const p = findProduct(id);
     if (!p) return;
-    let qty = Math.max(1, minQty(p.unit));
+    let qty = Math.max(1, minQty(p));
     const price = effectivePrice(p);
     const ok = canOrder(p);
     const imgs = p.images.length ? p.images : [null];
@@ -663,7 +666,7 @@
       <div class="buy">
         ${ok ? `
         <div class="buy-row">
-          <div id="qtyBox" aria-label="الكمية">${stepperHTML(qty, p.unit)}</div>
+          <div id="qtyBox" aria-label="الكمية">${stepperHTML(qty, p)}</div>
           <b class="buy-total" id="pTotal" aria-live="polite">${formatPrice(price * qty)}</b>
         </div>
         <button class="btn" id="pAdd">أضف للسلة</button>` : `
@@ -685,12 +688,12 @@
     $('#qtyBox', sheet).addEventListener('click', e => {
       const b = e.target.closest('[data-step]');
       if (!b || filled) return;
-      qty = stepQty(qty, p.unit, Number(b.dataset.step));
+      qty = stepQty(qty, p, Number(b.dataset.step));
       drawQty();
     });
 
     function drawQty() {
-      $('#qtyBox', sheet).innerHTML = filled ? '<span class="c-one">علبة وحدة</span>' : stepperHTML(qty, p.unit);
+      $('#qtyBox', sheet).innerHTML = filled ? '<span class="c-one">علبة وحدة</span>' : stepperHTML(qty, p);
       $('#pTotal', sheet).textContent = formatPrice(total());
       $('#pAdd', sheet).textContent = filled && !fill.length ? 'اختار شو بدك جوا البوكس' : 'أضف للسلة';
     }
@@ -873,7 +876,7 @@
       if (stepBtn && row) {
         const l = cart[Number(row.dataset.line)];
         const p = findProduct(l.id);
-        l.qty = stepQty(l.qty, p.unit, Number(stepBtn.dataset.step));
+        l.qty = stepQty(l.qty, p, Number(stepBtn.dataset.step));
         saveCart(); renderCartInto(sheet);
       } else if (rm) {
         cart.splice(Number(rm.dataset.remove), 1);
@@ -910,7 +913,7 @@
               ${l.note ? `<p class="note">${escapeHTML(l.note)}</p>` : ''}
               ${l.fill ? fillListHTML(l.fill) : ''}
               <div class="ctrl">
-                ${l.fill ? '<span class="c-one">بوكس معبّى</span>' : stepperHTML(l.qty, p.unit, true)}
+                ${l.fill ? '<span class="c-one">بوكس معبّى</span>' : stepperHTML(l.qty, p, true)}
                 <button class="link-btn" data-remove="${i}">إزالة</button>
               </div>
             </div>
@@ -1622,7 +1625,7 @@
           .map(x => ({ id: x.product_id, qty: snapFill(x.qty) }));
         addToCart(p.id, 1, i.note || '', fill);
       } else {
-        addToCart(p.id, snapQty(i.qty, p.unit), i.note || '');
+        addToCart(p.id, snapQty(i.qty, p), i.note || '');
       }
       added++;
     });
@@ -1832,7 +1835,7 @@
         const p = findProduct(add.dataset.add);
         // البوكس بيفتح صفحته لحتى يختار الزبون فارغ ولا معبّى
         if (p.custom_note_label || (isBox(p) && products.some(canFill))) { openProduct(p.id); return; }
-        const q = Math.max(1, minQty(p.unit));
+        const q = Math.max(1, minQty(p));
         addToCart(p.id, q);
         toast('انضاف ' + formatQty(q, p.unit) + ' ' + p.name + ' للسلة');
         return;

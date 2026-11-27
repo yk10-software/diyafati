@@ -197,9 +197,10 @@ begin
     v_qty := nullif(it->>'qty', '')::numeric;
     if v_qty is null or v_qty <= 0 or v_qty > 1000 then raise exception 'invalid_qty'; end if;
     if pr.unit = 'كيلو' then
-      -- الخطوة ربع كيلو إذا أقل كمية ربع، وإلا نص كيلو، ومو أقل من الحد الأدنى
-      v_step := case when s.min_kilo < 0.5 then 0.25 else 0.5 end;
-      if mod(v_qty, v_step) <> 0 or v_qty < s.min_kilo then raise exception 'invalid_qty'; end if;
+      -- الصنف إله كمية خاصة (qty_step، ملف 22): هي أقل كمية وهي الخطوة.
+      -- وإلا العامة: الخطوة ربع كيلو إذا أقل كمية ربع، وإلا نص كيلو، ومو أقل من الحد الأدنى
+      v_step := coalesce(pr.qty_step, case when s.min_kilo < 0.5 then 0.25 else 0.5 end);
+      if mod(v_qty, v_step) <> 0 or v_qty < coalesce(pr.qty_step, s.min_kilo) then raise exception 'invalid_qty'; end if;
     else
       if v_qty <> trunc(v_qty) then raise exception 'invalid_qty'; end if;
     end if;

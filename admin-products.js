@@ -171,6 +171,15 @@
           <input name="pieces" type="text" inputmode="numeric" dir="ltr" autocomplete="off" value="${p.pieces_per_kg ?? ''}">
           <span class="err">اكتب رقم صحيح أكبر من صفر.</span>
         </label>
+        <label class="field" id="stepField" ${p.unit === 'كيلو' ? '' : 'hidden'}>
+          <span>بينباع بـ <small>(أقل كمية، وبيزيد فيها)</small></span>
+          <select name="qty_step">
+            <option value="" ${p.qty_step == null ? 'selected' : ''}>حسب الإعدادات (${formatQty(Number(state.settings.min_kilo) || 0.5, 'كيلو')})</option>
+            <option value="0.25" ${Number(p.qty_step) === 0.25 ? 'selected' : ''}>ربع كيلو</option>
+            <option value="0.5" ${Number(p.qty_step) === 0.5 ? 'selected' : ''}>نص كيلو</option>
+            <option value="1" ${Number(p.qty_step) === 1 ? 'selected' : ''}>كيلو</option>
+          </select>
+        </label>
         <label class="field">
           <span>القسم</span>
           <select name="category_id">
@@ -225,7 +234,10 @@
 
     sheet.addEventListener('change', async e => {
       if (e.target.name === 'custom') { $('#noteField', sheet).hidden = !e.target.checked; return; }
-      if (e.target.name === 'unit') { $('#piecesField', sheet).hidden = e.target.value !== 'كيلو'; return; }
+      if (e.target.name === 'unit') {
+        $('#piecesField', sheet).hidden = $('#stepField', sheet).hidden = e.target.value !== 'كيلو';
+        return;
+      }
       if (e.target.id !== 'imgInput') return;
       for (const file of e.target.files) {
         try {
@@ -275,6 +287,7 @@
           sale_price: sale,
           featured: f.featured.checked,
           pieces_per_kg: pieces,
+          qty_step: kilo && f.qty_step.value ? Number(f.qty_step.value) : null,
           sale_until: sale === null ? null : A.endOfDay(f.sale_until.value),
           unit: f.unit.value,
           category_id: f.category_id.value ? Number(f.category_id.value) : null,

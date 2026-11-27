@@ -531,6 +531,7 @@
   function renderAll() {
     renderClosed();
     renderSocials();
+    renderPromo();
     renderChips();
     renderGrid();
     renderStories();
@@ -1387,6 +1388,7 @@
         <a class="btn whats" href="${url}" target="_blank" rel="noopener" style="margin-top:16px;text-decoration:none">${ICON.whats} فتح واتساب</a>
         <button class="btn ghost" id="trackNew" style="margin-top:10px">تابع طلبك</button>
         ${notifyHTML({ status: 'new', token: r.token })}
+        ${promoHTML(true)}
       </div>`, { label: 'تم حفظ الطلب' });
     $('#trackNew', sheet).addEventListener('click', () => openOrder(r.token));
     sheet.addEventListener('click', e => {
@@ -1478,17 +1480,22 @@
     return Uint8Array.from(atob(s + '='.repeat((4 - s.length % 4) % 4)), c => c.charCodeAt(0));
   }
 
+  // بيطلب الإذن، وبيرجّع اشتراك هالموبايل (نفسه لإشعارات الطلب والعروض)
+  async function pushSubscription() {
+    if (await Notification.requestPermission() !== 'granted') throw new Error('denied');
+    // الـ service worker ممكن ما يجهز أبداً إذا فشل، فما منستنى للأبد
+    const reg = await Promise.race([
+      navigator.serviceWorker.ready,
+      new Promise((_, rej) => setTimeout(() => rej(new Error('sw_timeout')), 15000)),
+    ]);
+    return await reg.pushManager.getSubscription()
+      || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(VAPID_PUBLIC_KEY) });
+  }
+
   async function enableOrderPush(token, btn) {
     btn.disabled = true;
     try {
-      if (await Notification.requestPermission() !== 'granted') throw new Error('denied');
-      // الـ service worker ممكن ما يجهز أبداً إذا فشل، فما منستنى للأبد
-      const reg = await Promise.race([
-        navigator.serviceWorker.ready,
-        new Promise((_, rej) => setTimeout(() => rej(new Error('sw_timeout')), 15000)),
-      ]);
-      const sub = await reg.pushManager.getSubscription()
-        || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(VAPID_PUBLIC_KEY) });
+      const sub = await pushSubscription();
       await API.rpc('subscribe_order_push', { p_token: token, p_sub: sub.toJSON() });
       ls.set(PUSH_KEY, [token, ...ls.get(PUSH_KEY, []).filter(t => t !== token)].slice(0, 30));
       btn.outerHTML = `<p class="hint notify-on">${ICON.bell} رح يوصلك إشعار كل ما يتغيّر وضع طلبك</p>`;
@@ -1499,6 +1506,71 @@
       toast(err.message === 'denied' ? 'لازم توافق عالإشعارات لتوصلك' : 'ما قدرنا نفعّل الإشعارات. جرّب كمان مرة.');
     }
   }
+
+  /* ---------- إشعارات العروض (رسائل صاحب المحل للكل) ----------
+     موافقة لحالها عن إشعارات الطلب: الزبون بيكبس «بلّغني بالعروض» بالفوتر أو بعد الطلب،
+     وبينحفظ موبايله بـ promo_push_subscriptions (ملف 24_broadcasts.sql). وبيقدر يلغي بأي وقت. */
+  const PROMO_KEY = 'diyafati_promo';
+
+  function promoHTML(small) {
+    if (ls.get(PROMO_KEY, false)) {
+      return small ? '' : `<p class="promo-on">${ICON.bell} رح يوصلك جديد ضيافتي وعروضها <button type="button" class="link-btn" data-promo-off>إلغاء</button></p>`;
+    }
+    if (isIOS && !isStandalone) {
+      return small ? '' : '<p class="promo-hint">لتوصلك عروض ضيافتي: من زر المشاركة اختار «إضافة إلى الشاشة الرئيسية»، وافتح ضيافتي من الأيقونة.</p>';
+    }
+    if (!pushSupported() || Notification.permission === 'denied') return '';
+    return small
+      ? `<button type="button" class="link-btn promo-small" data-promo-on>${ICON.bell} وبلّغني كمان بعروض ضيافتي</button>`
+      : `<button type="button" class="btn ghost" data-promo-on>${ICON.bell} بلّغني بالعروض والجديد</button>`;
+  }
+
+  function renderPromo() {
+    const box = $('#promo');
+    if (!box) return;
+    box.innerHTML = promoHTML(false);
+    box.hidden = !box.innerHTML;
+  }
+
+  async function enablePromoPush(btn) {
+    btn.disabled = true;
+    try {
+      const sub = await pushSubscription();
+      const ok = await API.rpc('subscribe_promo_push', { p_sub: sub.toJSON() });
+      if (!ok) throw new Error('limited');
+      ls.set(PROMO_KEY, true);
+      renderPromo();
+      if (btn.isConnected) btn.remove();
+      toast('رح توصلك عروض ضيافتي 🌹');
+    } catch (err) {
+      console.error(err);
+      btn.disabled = false;
+      toast(err.message === 'denied' ? 'لازم توافق عالإشعارات لتوصلك' : 'ما قدرنا نفعّل الإشعارات. جرّب كمان مرة.');
+    }
+  }
+
+  async function disablePromoPush(btn) {
+    btn.disabled = true;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) await API.rpc('unsubscribe_promo_push', { p_endpoint: sub.endpoint });
+      ls.set(PROMO_KEY, false);
+      renderPromo();
+      toast('ما عاد رح توصلك العروض');
+    } catch (err) {
+      console.error(err);
+      btn.disabled = false;
+      toast('ما قدرنا نلغي. جرّب كمان مرة.');
+    }
+  }
+
+  document.addEventListener('click', e => {
+    const on = e.target.closest('[data-promo-on]');
+    if (on) { enablePromoPush(on); return; }
+    const off = e.target.closest('[data-promo-off]');
+    if (off) disablePromoPush(off);
+  });
 
   function trackHTML(o) {
     const cur = stepIndex(o);

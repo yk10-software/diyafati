@@ -10,6 +10,9 @@
 //   3) trigger لما تتغيّر حالة الطلب (type = 'STATUS'، ملف 23_customer_push.sql):
 //      بتبعت للزبون، لموبايلاته المشتركة بهالطلب بس (order_push_subscriptions).
 //      الحالة منقراها من القاعدة، وكل حالة إلها إشعار واحد (status_notified).
+//   4) trigger لما صاحب المحل يبعت رسالة للكل (type = 'BROADCAST'، ملف 24_broadcasts.sql):
+//      بتبعت لكل الموبايلات اللي كبست «بلّغني بالعروض» (promo_push_subscriptions).
+//      النص منقراه من جدول broadcasts، وكل رسالة بتنبعت مرة وحدة (sent_at).
 // لازم تنعمل مع Verify JWT مطفي، لأن الـ trigger ما معه JWT، والفحص صاير هون.
 // ما في أي مكتبة خارجية: التشفير كله WebCrypto، حسب RFC 8291 و RFC 8292.
 //
@@ -212,6 +215,67 @@ async function removeOrderSubscription(subId) {
   await fetch(`${SUPABASE_URL}/rest/v1/order_push_subscriptions?id=eq.${subId}`, { method: 'DELETE', headers: adminHeaders() });
 }
 
+/* ---------- رسالة صاحب المحل لكل المشتركين ---------- */
+// منحجز الرسالة بـ update شرطي (sent_at فاضي)، فما بتنبعت مرتين.
+async function claimBroadcast(id) {
+  if (!/^\d{1,12}$/.test(String(id))) return null;
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/broadcasts?id=eq.${id}&sent_at=is.null&select=id,title,body`,
+    {
+      method: 'PATCH',
+      headers: { ...adminHeaders(), 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify({ sent_at: new Date().toISOString() }),
+    });
+  if (!res.ok) throw new Error(`broadcast_${res.status}`);
+  const [b] = await res.json();
+  return b || null;
+}
+
+// كل الاشتراكات، 1000 ورا 1000 (أكتر شي بيرجّعه Supabase بالمرة)
+async function loadPromoSubscriptions() {
+  const all = [];
+  for (let from = 0; ; from += 1000) {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/promo_push_subscriptions?select=id,endpoint,p256dh,auth&order=id&limit=1000&offset=${from}`,
+      { headers: adminHeaders() });
+    if (!res.ok) throw new Error(`promo_subscriptions_${res.status}`);
+    const rows = await res.json();
+    all.push(...rows);
+    if (rows.length < 1000) return all;
+  }
+}
+
+async function sendBroadcast(b) {
+  const message = { title: b.title, body: b.body, url: './', tag: `promo-${b.id}` };
+  const subs = await loadPromoSubscriptions();
+  let accepted = 0;
+  const dead = [];
+  // 50 ورا 50، لحتى ما نفتح آلاف الاتصالات بنفس اللحظة
+  for (let i = 0; i < subs.length; i += 50) {
+    await Promise.all(subs.slice(i, i + 50).map(async sub => {
+      try {
+        const res = await sendPush(sub, message);
+        if (res.ok) accepted++;
+        else if (res.status === 404 || res.status === 410) dead.push(sub.id);
+        else console.warn(new URL(sub.endpoint).host, res.status);
+      } catch (err) {
+        console.warn(String(err).slice(0, 200));
+      }
+    }));
+  }
+  // الاشتراكات المنتهية (ألغوا الإشعارات أو حذفوا التطبيق)
+  for (let i = 0; i < dead.length; i += 200) {
+    await fetch(`${SUPABASE_URL}/rest/v1/promo_push_subscriptions?id=in.(${dead.slice(i, i + 200).join(',')})`,
+      { method: 'DELETE', headers: adminHeaders() });
+  }
+  await fetch(`${SUPABASE_URL}/rest/v1/broadcasts?id=eq.${b.id}`, {
+    method: 'PATCH',
+    headers: { ...adminHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify({ sent_count: accepted, removed_count: dead.length }),
+  });
+  console.log(JSON.stringify({ broadcast: b.id, subscriptions: subs.length, accepted, removed: dead.length }));
+}
+
 Deno.serve(async req => {
   const cors = {
     'Access-Control-Allow-Origin': '*',
@@ -229,6 +293,22 @@ Deno.serve(async req => {
   const body = await req.json().catch(() => ({}));
   // الـ trigger بيبعت صف الطلب نفسه، والـ webhook القديم كان يبعته جوّا record
   const orderId = body?.record?.id ?? body?.id;
+
+  // رسالة للكل: منرد دغري، والإرسال بيكمل بالخلفية (ممكن يكونوا آلاف الموبايلات)
+  if (body?.type === 'BROADCAST') {
+    let b;
+    try {
+      b = await claimBroadcast(orderId);
+    } catch (err) {
+      console.error(err);
+      return reply({ error: 'broadcast_check_failed' }, 500);
+    }
+    if (!b) return reply({ skipped: true });
+    const job = sendBroadcast(b).catch(err => console.error(err));
+    // @ts-ignore: EdgeRuntime موجود على Supabase بس
+    if (typeof EdgeRuntime !== 'undefined') EdgeRuntime.waitUntil(job); else await job;
+    return reply({ queued: true });
+  }
 
   let message;
   let forCustomer = false;

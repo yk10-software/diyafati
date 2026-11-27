@@ -182,6 +182,10 @@
             <b>التقييمات</b>
             <span><i>${fresh2}</i> ${fresh2 > 1 ? 'جداد' : 'جديد'}</span>
           </a>
+          <a class="stat h-link wide" href="#broadcast">
+            <b>رسالة للزباين</b>
+            <span>إشعار عالموبايل للمشتركين</span>
+          </a>
         </div>
 
         <div class="sec"><h2>طلبات جديدة</h2><a class="link-btn" href="#orders">عرض الكل</a></div>

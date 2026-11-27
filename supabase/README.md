@@ -27,6 +27,7 @@
 | `21_rate_limits.sql` | `is_admin` للمسجّلين بس، وحد 20 محاولة كوبون كل 10 دقايق من نفس الجهاز (`rate_hits`). بعده لازم تعيد تشغيل `03_functions.sql` |
 | `22_product_step.sql` | `qty_step` بالأصناف: الصنف بينباع بربع أو نص أو كيلو (أقل كمية وخطوة). فاضي = الإعداد العام. بعده لازم تعيد تشغيل `03_functions.sql` |
 | `23_customer_push.sql` | إشعارات للزبون لما تتغيّر حالة طلبه: `order_push_subscriptions` و `subscribe_order_push` و trigger `notify_order_status` و `orders.status_notified`. بعده لازم ترفع `notify-order` الجديدة |
+| `24_broadcasts.sql` | رسائل لكل الزباين: `promo_push_subscriptions` و `subscribe_promo_push` و `unsubscribe_promo_push` و `broadcasts` (لحد 3 باليوم) و trigger `notify_broadcast`. بعده لازم ترفع `notify-order` الجديدة |
 
 كل الملفات آمنة لو انشغّلت مرتين.
 

@@ -661,6 +661,15 @@ body.in-panel .toast { bottom: calc(150px + var(--safe-b)); }
 .h-link span { font-size: 13px; color: var(--muted); white-space: nowrap; }
 .h-link i { font-style: normal; font-weight: 600; color: var(--cocoa); }
 .h-link.has-new i { color: #B4561F; }
+.h-link.wide { grid-column: 1 / -1; }
+/* رسالة للزباين: شكل الإشعار قبل ما ينبعت */
+.bc-form { padding: 14px; }
+.bc-form .field small { color: var(--muted); font-weight: 400; margin-inline-start: 6px; }
+.bc-preview { display: flex; gap: 10px; align-items: flex-start; background: var(--sugar); border: 1px solid var(--line); border-radius: 14px; padding: 10px 12px; margin: 4px 0 12px; }
+.bc-preview img { border-radius: 8px; flex-shrink: 0; }
+.bc-preview b { display: block; font-size: 14px; color: var(--ink); }
+.bc-preview span { display: block; font-size: 13px; color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; }
+.bc-form .btn { width: 100%; }
 .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
 .stat { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
 .stat.hero { background: var(--cocoa); color: var(--butter); border-color: var(--cocoa); }
@@ -868,3 +877,10 @@ body.in-panel .toast { bottom: calc(150px + var(--safe-b)); }
 [data-notify] svg, .notify-on svg { width: 18px; height: 18px; vertical-align: -4px; margin-inline-end: 4px; }
 .o-hero + [data-notify], .o-hero + .notify-on { margin: 10px 0 4px; }
 .notify-on { color: var(--cocoa); font-weight: 500; }
+/* إشعارات العروض بالفوتر وبعد الطلب */
+.promo { margin: 0 0 18px; }
+.promo .btn { width: 100%; }
+.promo-on, .promo-hint { margin: 0; color: var(--cocoa); font-size: 14px; }
+.promo-on .link-btn { font-size: 13px; margin-inline-start: 6px; }
+[data-promo-on] svg, .promo-on svg { width: 18px; height: 18px; vertical-align: -4px; margin-inline-end: 4px; }
+.promo-small { display: inline-block; margin-top: 12px; font-size: 14px; }

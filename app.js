@@ -1391,6 +1391,7 @@
         ${promoHTML(true)}
       </div>`, { label: 'تم حفظ الطلب' });
     $('#trackNew', sheet).addEventListener('click', () => openOrder(r.token));
+    autoSubscribeOrder(r.token);
     sheet.addEventListener('click', e => {
       const nb = e.target.closest('[data-notify]');
       if (nb) enableOrderPush(nb.dataset.notify, nb);
@@ -1468,7 +1469,7 @@
 
   function notifyHTML(o) {
     if (!ACTIVE.includes(o.status)) return '';
-    if (ls.get(PUSH_KEY, []).includes(o.token)) return `<p class="hint notify-on">${ICON.bell} رح يوصلك إشعار كل ما يتغيّر وضع طلبك</p>`;
+    if (ls.get(PUSH_KEY, []).includes(o.token) || autoOrderPush()) return `<p class="hint notify-on">${ICON.bell} رح يوصلك إشعار كل ما يتغيّر وضع طلبك</p>`;
     if (isIOS && !isStandalone) return '<p class="hint">لتوصلك إشعارات بطلبك: من زر المشاركة اختار «إضافة إلى الشاشة الرئيسية»، وافتح ضيافتي من الأيقونة.</p>';
     if (!pushSupported()) return '';
     if (Notification.permission === 'denied') return '<p class="hint">الإشعارات مسكّرة لهالموقع. فيك تفتحها من إعدادات المتصفح.</p>';
@@ -1505,6 +1506,74 @@
       btn.disabled = false;
       toast(err.message === 'denied' ? 'لازم توافق عالإشعارات لتوصلك' : 'ما قدرنا نفعّل الإشعارات. جرّب كمان مرة.');
     }
+  }
+
+  /* ---------- موافقة وحدة لكلشي ----------
+     نافذة صغيرة بعد ثواني من الدخول: «بدك يوصلك وضع طلباتك وعروضنا؟».
+     إذا وافق: منفعّل العروض، وطلباته المفتوحة، وكل طلب جديد بيتفعّل لحاله (ALL_KEY).
+     ما منطلب إذن المتصفح بلا كبسة، لأن آيفون بيرفضه وكروم بيحسب الموقع مزعج.
+     إذا قال «مو هلق»، ما منرجع نسأل إلا بعد أسبوع. */
+  const ALL_KEY = 'diyafati_push_all';
+  const ASKED_KEY = 'diyafati_push_asked';
+
+  const autoOrderPush = () => ls.get(ALL_KEY, false) && pushSupported() && Notification.permission === 'granted';
+
+  // بعد الطلب: إذا الزبون موافق على كلشي، منسجّل الطلب بلا ما نسأله
+  async function autoSubscribeOrder(token) {
+    if (!autoOrderPush()) return;
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (!sub) return;
+      await API.rpc('subscribe_order_push', { p_token: token, p_sub: sub.toJSON() });
+      ls.set(PUSH_KEY, [token, ...ls.get(PUSH_KEY, []).filter(t => t !== token)].slice(0, 30));
+    } catch (err) { console.warn(err); }
+  }
+
+  async function enableAll(btn) {
+    btn.disabled = true;
+    try {
+      const sub = await pushSubscription();
+      const json = sub.toJSON();
+      await API.rpc('subscribe_promo_push', { p_sub: json });
+      ls.set(PROMO_KEY, true);
+      ls.set(ALL_KEY, true);
+      // آخر طلبات هالموبايل: المسلّمة والملغية الدالة بتتجاهلها
+      const subscribed = ls.get(PUSH_KEY, []);
+      for (const token of ls.get(ORDERS_KEY, []).slice(0, 5)) {
+        try {
+          if (await API.rpc('subscribe_order_push', { p_token: token, p_sub: json })) subscribed.unshift(token);
+        } catch (err) { /* الطلب انحذف */ }
+      }
+      ls.set(PUSH_KEY, [...new Set(subscribed)].slice(0, 30));
+      closeSheet();
+      renderPromo();
+      toast('تفعّلت الإشعارات 🌹');
+    } catch (err) {
+      console.error(err);
+      btn.disabled = false;
+      toast(err.message === 'denied' ? 'لازم توافق عالإشعارات لتوصلك' : 'ما قدرنا نفعّل الإشعارات. جرّب كمان مرة.');
+    }
+  }
+
+  function maybeAskPush() {
+    if (ls.get(ALL_KEY, false) || !pushSupported() || Notification.permission === 'denied') return;
+    if (isIOS && !isStandalone) return;   // عالآيفون بلا تثبيت ما بتشتغل، وشريط التثبيت بيكفي
+    if (Date.now() - ls.get(ASKED_KEY, 0) < 7 * 24 * 3600 * 1000) return;
+    setTimeout(function ask() {
+      // ما منقاطع الزبون إذا فاتح شي، منستنى
+      if (document.querySelector('.overlay')) { setTimeout(ask, 5000); return; }
+      ls.set(ASKED_KEY, Date.now());
+      const sheet = openSheet(`
+        <div class="center">
+          <div class="done-mark">${ICON.bell}</div>
+          <h2 class="p-name" style="margin-top:8px">بدك يوصلك وضع طلباتك وعروضنا؟</h2>
+          <p class="p-desc">منبلّغك لما يتحضّر طلبك ولما يطلع بالطريق، ومنبعتلك عروض ضيافتي. فيك تلغيها بأي وقت من آخر الصفحة.</p>
+          <button class="btn" type="button" id="askYes" style="margin-top:16px">إي، فعّلها</button>
+          <button class="btn ghost" type="button" data-close style="margin-top:10px">مو هلق</button>
+        </div>`, { label: 'تفعيل الإشعارات' });
+      $('#askYes', sheet).addEventListener('click', e => enableAll(e.currentTarget));
+    }, 6000);
   }
 
   /* ---------- إشعارات العروض (رسائل صاحب المحل للكل) ----------
@@ -1556,6 +1625,7 @@
       const sub = await reg.pushManager.getSubscription();
       if (sub) await API.rpc('unsubscribe_promo_push', { p_endpoint: sub.endpoint });
       ls.set(PROMO_KEY, false);
+      ls.set(ALL_KEY, false);
       renderPromo();
       toast('ما عاد رح توصلك العروض');
     } catch (err) {
@@ -2007,6 +2077,7 @@
   bind();
   refreshCatalog();
   maybeShowInstall();
+  if (!new URLSearchParams(location.search).has('order')) maybeAskPush();
 
   // الإشعار بيفتح ?order=TOKEN: منفتح الطلب، ومنشيل التوكن من الرابط
   const fromPush = new URLSearchParams(location.search).get('order');

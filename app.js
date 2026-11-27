@@ -24,6 +24,7 @@
   };
 
   const ICON = {
+    bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15L6 16Z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>',
     instagram: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="3.5" width="17" height="17" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17" cy="7" r="1" fill="currentColor" stroke="none"/></svg>',
     facebook: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M13.5 21v-7.5H16l.5-3h-3V8.6c0-.9.3-1.5 1.5-1.5h1.6V4.4c-.3 0-1.2-.1-2.3-.1-2.3 0-3.8 1.4-3.8 3.9v2.3H8v3h2.5V21h3Z"/></svg>',
     plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
@@ -1385,8 +1386,13 @@
         <p class="p-desc">رقم طلبك <b><bdi dir="ltr">#${escapeHTML(r.code)}</bdi></b>. اضغط إرسال بواتساب لنتأكد معك${paid ? '، وابعت صورة الإيصال بنفس المحادثة' : ''}.</p>
         <a class="btn whats" href="${url}" target="_blank" rel="noopener" style="margin-top:16px;text-decoration:none">${ICON.whats} فتح واتساب</a>
         <button class="btn ghost" id="trackNew" style="margin-top:10px">تابع طلبك</button>
+        ${notifyHTML({ status: 'new', token: r.token })}
       </div>`, { label: 'تم حفظ الطلب' });
     $('#trackNew', sheet).addEventListener('click', () => openOrder(r.token));
+    sheet.addEventListener('click', e => {
+      const nb = e.target.closest('[data-notify]');
+      if (nb) enableOrderPush(nb.dataset.notify, nb);
+    });
   }
 
   /* ---------- طلباتي ومتابعة الطلب ---------- */
@@ -1451,6 +1457,49 @@
       </form>`;
   }
 
+  /* ---------- إشعارات الطلب للزبون ----------
+     الزبون بيفعّلها من صفحة الطلب. الموبايل بيتسجّل لهالطلب بس (subscribe_order_push)،
+     وصاحب المحل لما يغيّر الحالة بيوصله إشعار (notify-order، ملف 23_customer_push.sql).
+     عالآيفون الإشعارات بتشتغل بس إذا التطبيق مثبّت عالشاشة الرئيسية (iOS 16.4+). */
+  const PUSH_KEY = 'diyafati_push_orders';
+  const pushSupported = () => window.isSecureContext && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+
+  function notifyHTML(o) {
+    if (!ACTIVE.includes(o.status)) return '';
+    if (ls.get(PUSH_KEY, []).includes(o.token)) return `<p class="hint notify-on">${ICON.bell} رح يوصلك إشعار كل ما يتغيّر وضع طلبك</p>`;
+    if (isIOS && !isStandalone) return '<p class="hint">لتوصلك إشعارات بطلبك: من زر المشاركة اختار «إضافة إلى الشاشة الرئيسية»، وافتح ضيافتي من الأيقونة.</p>';
+    if (!pushSupported()) return '';
+    if (Notification.permission === 'denied') return '<p class="hint">الإشعارات مسكّرة لهالموقع. فيك تفتحها من إعدادات المتصفح.</p>';
+    return `<button type="button" class="btn ghost" data-notify="${escapeHTML(o.token)}">${ICON.bell} بلّغني لما يتغيّر وضع طلبي</button>`;
+  }
+
+  function keyBytes(b64u) {
+    const s = b64u.replace(/-/g, '+').replace(/_/g, '/');
+    return Uint8Array.from(atob(s + '='.repeat((4 - s.length % 4) % 4)), c => c.charCodeAt(0));
+  }
+
+  async function enableOrderPush(token, btn) {
+    btn.disabled = true;
+    try {
+      if (await Notification.requestPermission() !== 'granted') throw new Error('denied');
+      // الـ service worker ممكن ما يجهز أبداً إذا فشل، فما منستنى للأبد
+      const reg = await Promise.race([
+        navigator.serviceWorker.ready,
+        new Promise((_, rej) => setTimeout(() => rej(new Error('sw_timeout')), 15000)),
+      ]);
+      const sub = await reg.pushManager.getSubscription()
+        || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(VAPID_PUBLIC_KEY) });
+      await API.rpc('subscribe_order_push', { p_token: token, p_sub: sub.toJSON() });
+      ls.set(PUSH_KEY, [token, ...ls.get(PUSH_KEY, []).filter(t => t !== token)].slice(0, 30));
+      btn.outerHTML = `<p class="hint notify-on">${ICON.bell} رح يوصلك إشعار كل ما يتغيّر وضع طلبك</p>`;
+      toast('تفعّلت الإشعارات لطلبك');
+    } catch (err) {
+      console.error(err);
+      btn.disabled = false;
+      toast(err.message === 'denied' ? 'لازم توافق عالإشعارات لتوصلك' : 'ما قدرنا نفعّل الإشعارات. جرّب كمان مرة.');
+    }
+  }
+
   function trackHTML(o) {
     const cur = stepIndex(o);
     const done = o.status === 'delivered';
@@ -1460,6 +1509,7 @@
         <button class="close" aria-label="إغلاق">×</button>
       </div>
       <div class="o-hero"><b>${HERO[o.status]}</b><span>${deliveryLine(o)}</span></div>
+      ${notifyHTML(o)}
       ${reviewHTML(o)}
       ${o.status === 'cancelled' ? '' : `
       <ul class="o-tl">
@@ -1544,6 +1594,8 @@
         $('#rateMsg', sheet).textContent = '';
         return;
       }
+      const nb = e.target.closest('[data-notify]');
+      if (nb) { enableOrderPush(nb.dataset.notify, nb); return; }
       if (e.target.closest('[data-reorder]') && order) reorder(order);
       else if (e.target.closest('[data-all-orders]')) openOrders();
     });
@@ -1883,6 +1935,14 @@
   bind();
   refreshCatalog();
   maybeShowInstall();
+
+  // الإشعار بيفتح ?order=TOKEN: منفتح الطلب، ومنشيل التوكن من الرابط
+  const fromPush = new URLSearchParams(location.search).get('order');
+  if (fromPush) {
+    history.replaceState(null, '', location.pathname);
+    saveToken(fromPush);
+    openOrder(fromPush);
+  }
 
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));

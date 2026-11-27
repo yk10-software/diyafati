@@ -7,6 +7,9 @@
 //      ما في سر مشترك: منتأكد إنو الطلب موجود فعلاً بالقاعدة وانعمل هلق،
 //      ومنبني نص الإشعار من القاعدة، مو من اللي انبعت.
 //      وكل طلب إله إشعار واحد بس (notified_at، ملف 10_notified_at.sql).
+//   3) trigger لما تتغيّر حالة الطلب (type = 'STATUS'، ملف 23_customer_push.sql):
+//      بتبعت للزبون، لموبايلاته المشتركة بهالطلب بس (order_push_subscriptions).
+//      الحالة منقراها من القاعدة، وكل حالة إلها إشعار واحد (status_notified).
 // لازم تنعمل مع Verify JWT مطفي، لأن الـ trigger ما معه JWT، والفحص صاير هون.
 // ما في أي مكتبة خارجية: التشفير كله WebCrypto، حسب RFC 8291 و RFC 8292.
 //
@@ -164,6 +167,51 @@ async function orderMessage(id) {
   };
 }
 
+/* ---------- إشعار الزبون لما تتغيّر حالة طلبه ---------- */
+const STATUS_TEXT = {
+  preparing: { title: 'طلبك عم يتحضّر 👌', body: 'المحل بلّش يحضّر طلبك' },
+  on_way:    { title: 'طلبك طلع بالطريق 🚗', body: 'رح يوصلك قريباً' },
+  delivered: { title: 'وصل طلبك 🌹', body: 'نتمنى يعجبك. قيّم طلبك من هون' },
+  cancelled: { title: 'انلغى طلبك', body: 'لأي سؤال راسل المحل عالواتس' },
+};
+
+// منحجز الإشعار بـ update شرطي: الحالة لازم تكون نفسها، وما انبعتلها إشعار قبل.
+// هيك إذا انستدعت الدالة كذا مرة، الزبون بيوصله إشعار واحد لكل حالة.
+async function statusMessage(id) {
+  if (!UUID.test(String(id))) return null;
+  const cur = await fetch(`${SUPABASE_URL}/rest/v1/orders?id=eq.${id}&select=status,status_notified`, { headers: adminHeaders() });
+  if (!cur.ok) throw new Error(`order_${cur.status}`);
+  const [o] = await cur.json();
+  if (!o || !STATUS_TEXT[o.status] || o.status_notified === o.status) return null;
+  const res = await fetch(
+    `${SUPABASE_URL}/rest/v1/orders?id=eq.${id}&status=eq.${o.status}` +
+    `&or=(status_notified.is.null,status_notified.neq.${o.status})&select=code,token,status`,
+    {
+      method: 'PATCH',
+      headers: { ...adminHeaders(), 'Content-Type': 'application/json', Prefer: 'return=representation' },
+      body: JSON.stringify({ status_notified: o.status }),
+    });
+  if (!res.ok) throw new Error(`order_${res.status}`);
+  const [row] = await res.json();
+  if (!row) return null;
+  const t = STATUS_TEXT[row.status];
+  return {
+    title: t.title,
+    body: `${t.body} · #${row.code}`,
+    url: `./?order=${encodeURIComponent(row.token)}`,
+    tag: `order-${row.code}`,
+  };
+}
+
+async function loadOrderSubscriptions(id) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/order_push_subscriptions?order_id=eq.${id}&select=id,endpoint,p256dh,auth`, { headers: adminHeaders() });
+  if (!res.ok) throw new Error(`order_subscriptions_${res.status}`);
+  return res.json();
+}
+async function removeOrderSubscription(subId) {
+  await fetch(`${SUPABASE_URL}/rest/v1/order_push_subscriptions?id=eq.${subId}`, { method: 'DELETE', headers: adminHeaders() });
+}
+
 Deno.serve(async req => {
   const cors = {
     'Access-Control-Allow-Origin': '*',
@@ -183,7 +231,17 @@ Deno.serve(async req => {
   const orderId = body?.record?.id ?? body?.id;
 
   let message;
-  if (orderId) {
+  let forCustomer = false;
+  if (body?.type === 'STATUS') {
+    try {
+      message = await statusMessage(orderId);
+    } catch (err) {
+      console.error(err);
+      return reply({ error: 'order_check_failed' }, 500);
+    }
+    if (!message) return reply({ skipped: true });
+    forCustomer = true;
+  } else if (orderId) {
     try {
       message = await orderMessage(orderId);
     } catch (err) {
@@ -198,7 +256,7 @@ Deno.serve(async req => {
   }
 
   try {
-    const subs = await loadSubscriptions();
+    const subs = forCustomer ? await loadOrderSubscriptions(orderId) : await loadSubscriptions();
     const result = { subscriptions: subs.length, accepted: 0, removed: 0, failed: [] };
 
     await Promise.all(subs.map(async sub => {
@@ -208,7 +266,8 @@ Deno.serve(async req => {
         if (res.ok) result.accepted++;
         else if (res.status === 404 || res.status === 410) {
           // الاشتراك انتهى (ألغوا الإشعارات أو حذفوا التطبيق)
-          await removeSubscription(sub.endpoint);
+          if (forCustomer) await removeOrderSubscription(sub.id);
+          else await removeSubscription(sub.endpoint);
           result.removed++;
         } else {
           result.failed.push({ host, status: res.status, detail: (await res.text()).slice(0, 200) });

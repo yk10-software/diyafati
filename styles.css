@@ -863,3 +863,8 @@ body.in-panel .toast { bottom: calc(150px + var(--safe-b)); }
 /* اللي جوا البوكس: سطر أصغر تحت البوكس مع خط عالجنب */
 .o-item.in-box { padding: 3px 0; }
 .o-item .o-in { justify-self: center; align-self: stretch; width: 2px; background: var(--line); border-radius: 1px; }
+
+/* زر «بلّغني» بصفحة الطلب */
+[data-notify] svg, .notify-on svg { width: 18px; height: 18px; vertical-align: -4px; margin-inline-end: 4px; }
+.o-hero + [data-notify], .o-hero + .notify-on { margin: 10px 0 4px; }
+.notify-on { color: var(--cocoa); font-weight: 500; }

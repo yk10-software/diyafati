@@ -78,7 +78,9 @@ self.addEventListener('notificationclick', e => {
   const url = new URL(e.notification.data.url, self.registration.scope).href;
   e.waitUntil((async () => {
     const list = await clients.matchAll({ type: 'window', includeUncontrolled: true });
-    const open = list.find(c => new URL(c.url).pathname.endsWith('admin.html'));
+    // نافذة مفتوحة لنفس الصفحة: اللوحة لإشعارات المحل، والموقع لإشعارات الزبون
+    const path = new URL(url).pathname;
+    const open = list.find(c => new URL(c.url).pathname === path);
     if (open) {
       await open.focus();
       if (open.url !== url) await open.navigate(url);

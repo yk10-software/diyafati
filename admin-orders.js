@@ -138,7 +138,7 @@
         ${lines(o).map(i => `
           <div class="o-item${i.in_box ? ' in-box' : ''}">
             ${i.in_box ? '<span class="o-in" aria-hidden="true"></span>' : A.thumb(i.image)}
-            <div><b>${escapeHTML(i.name)}</b><span>${i.in_box ? 'جوا البوكس، ' : ''}${formatQty(Number(i.qty), i.unit)}${i.box_no && !i.in_box ? '، معبّى' : ''}</span></div>
+            <div><b>${escapeHTML(i.name)}</b><span>${i.in_box && !i.product_id ? 'للبوكس' : `${i.in_box ? 'جوا البوكس، ' : ''}${formatQty(Number(i.qty), i.unit)}${i.box_no && !i.in_box ? '، معبّى' : ''}`}</span></div>
             <span class="price">${formatPrice(i.line_total)}</span>
           </div>
           ${i.note ? `<p class="o-note">نص الطباعة: ${escapeHTML(i.note)}</p>` : ''}`).join('')}

@@ -77,6 +77,7 @@ create trigger orders_status_stamp before update on public.orders
 -- fill: البوكس المعبّى (18_box_fill.sql). البوكس لازم يكون من قسم is_boxes وكميته 1،
 -- واللي جواه من أقسام box_fill وبالكيلو، من ربع كيلو وطالع والخطوة ربع.
 -- البوكس واللي جواه بياخدوا نفس box_no، واللي جواه in_box = true.
+-- وإذا في أجرة تعبئة (settings.fill_fee، ملف 25)، بتنضاف سطر جوا البوكس بلا product_id.
 -- الأسعار اللي بيبعتها الزبون (إذا بعت) ما منستعملها أبداً.
 -- =========================================================
 create or replace function public.place_order(p_order jsonb)
@@ -275,6 +276,23 @@ begin
           'in_box',     true
         );
       end loop;
+
+      -- أجرة التعبئة والتزيين (ملف 25): سطر لحاله جوا البوكس
+      if coalesce(s.fill_fee, 0) > 0 then
+        v_subtotal := v_subtotal + s.fill_fee;
+        v_lines := v_lines || jsonb_build_object(
+          'product_id', null,
+          'name',       'أجرة التعبئة والتزيين',
+          'image',      null,
+          'unit',       'قطعة',
+          'qty',        1,
+          'unit_price', s.fill_fee,
+          'line_total', s.fill_fee,
+          'note',       '',
+          'box_no',     v_boxno,
+          'in_box',     true
+        );
+      end if;
     end if;
   end loop;
 

@@ -28,6 +28,7 @@
 | `22_product_step.sql` | `qty_step` بالأصناف: الصنف بينباع بربع أو نص أو كيلو (أقل كمية وخطوة). فاضي = الإعداد العام. بعده لازم تعيد تشغيل `03_functions.sql` |
 | `23_customer_push.sql` | إشعارات للزبون لما تتغيّر حالة طلبه: `order_push_subscriptions` و `subscribe_order_push` و trigger `notify_order_status` و `orders.status_notified`. بعده لازم ترفع `notify-order` الجديدة |
 | `24_broadcasts.sql` | رسائل لكل الزباين: `promo_push_subscriptions` و `subscribe_promo_push` و `unsubscribe_promo_push` و `broadcasts` (لحد 3 باليوم) و trigger `notify_broadcast`. بعده لازم ترفع `notify-order` الجديدة |
+| `25_fill_fee.sql` | `settings.fill_fee`: أجرة التعبئة والتزيين لكل بوكس أو صحن معبّى. بعده شغّل `03_functions.sql` |
 
 كل الملفات آمنة لو انشغّلت مرتين.
 

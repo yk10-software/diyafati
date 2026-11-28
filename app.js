@@ -70,7 +70,11 @@
   const isBox = p => { const c = p && findCat(p.category_id); return !!(c && c.is_boxes); };
   const canFill = p => { const c = p && findCat(p.category_id); return !!(c && c.box_fill && p.unit === 'كيلو' && canOrder(p)); };
   const snapFill = q => Math.min(50, Math.max(FILL_MIN, Math.round(Number(q) / FILL_MIN) * FILL_MIN));
-  const fillTotal = fill => (fill || []).reduce((sum, f) => { const p = findProduct(f.id); return p ? sum + effectivePrice(p) * f.qty : sum; }, 0);
+  // أجرة التعبئة والتزيين: ثابتة لكل بوكس أو صحن معبّى (ملف 25)
+  const fillFee = () => Number(settings.fill_fee) || 0;
+  const fillTotal = fill => (fill || []).length
+    ? fill.reduce((sum, f) => { const p = findProduct(f.id); return p ? sum + effectivePrice(p) * f.qty : sum; }, 0) + fillFee()
+    : 0;
   const lineTotal = l => { const p = findProduct(l.id); return p ? effectivePrice(p) * l.qty + fillTotal(l.fill) : 0; };
 
   function cleanCart() {
@@ -730,7 +734,8 @@
           ${fillListHTML(fill)}
           <button type="button" class="link-btn" data-fillpick>تعديل اللي جوا البوكس</button>
           <div class="o-sum"><span>البوكس</span><span>${formatPrice(price)}</span></div>
-          <div class="o-sum"><span>اللي جواه</span><span>${formatPrice(fillTotal(fill))}</span></div>
+          <div class="o-sum"><span>اللي جواه</span><span>${formatPrice(fillTotal(fill) - fillFee())}</span></div>
+          ${fillFee() ? `<div class="o-sum"><span>أجرة التعبئة والتزيين</span><span>${formatPrice(fillFee())}</span></div>` : ''}
         </div>`
         : '<button type="button" class="fill-pick" data-fillpick><span class="plus" aria-hidden="true">+</span>اختار شو بدك جوا البوكس</button>';
     }
@@ -738,7 +743,7 @@
     function drawFillSum() {
       const kg = fill.reduce((sum, f) => sum + f.qty, 0);
       $('#fillSum', sheet).textContent = fill.length ? `جوا البوكس: ${countLabel(fill.length)}، ${formatQty(kg, 'كيلو')}` : 'لسا ما اخترت شي';
-      $('#fillTot', sheet).textContent = formatPrice(fillTotal(fill));
+      $('#fillTot', sheet).textContent = formatPrice(fill.length ? fillTotal(fill) - fillFee() : 0);
     }
 
     function drawFillList() {
@@ -1352,6 +1357,7 @@
     const L = [`*طلب جديد من تطبيق ${CONFIG.shopName}*`, `رقم الطلب: #${r.code}`, '', '*الأصناف:*'];
     r.items.forEach(i => {
       // اللي جوا البوكس تحت البوكس بخطوة لجوا
+      if (i.in_box && !i.product_id) { L.push(`   + ${i.name} = ${formatPrice(i.line_total)}`); return; }
       if (i.in_box) { L.push(`   + ${i.name}: ${formatQty(Number(i.qty), i.unit)} = ${formatPrice(i.line_total)}`); return; }
       L.push(`- ${i.name}${i.box_no ? ' (معبّى)' : ''}: ${formatQty(Number(i.qty), i.unit)} = ${formatPrice(i.line_total)}`);
       if (i.note) L.push(`  ملاحظة: ${i.note}`);

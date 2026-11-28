@@ -76,10 +76,6 @@
           <button class="link-btn" type="button" data-set="min_kilo">تغيير</button>
         </div>
         <div class="srow">
-          <div class="lbl"><b>أجرة التعبئة والتزيين</b><span>${Number(s.fill_fee) ? `${formatPrice(Number(s.fill_fee))} <small>(لكل بوكس أو صحن معبّى)</small>` : 'بلا أجرة'}</span></div>
-          <button class="link-btn" type="button" data-set="fill_fee">تغيير</button>
-        </div>
-        <div class="srow">
           <div class="lbl"><b>استقبال طلبات بموعد</b><span>${s.scheduled_enabled ? `لحد ${A.countAr(s.schedule_max_days, 'يوم', 'يومين', 'أيام')} لقدام` : 'مسكّر: بس «بأقرب وقت»'}</span></div>
           <label class="switch"><input type="checkbox" id="sSched" ${s.scheduled_enabled ? 'checked' : ''} aria-label="استقبال طلبات بموعد"><span></span></label>
         </div>
@@ -231,13 +227,6 @@
         `<option value="${q}" ${Number(v) === q ? 'selected' : ''}>${formatQty(q, 'كيلو')}</option>`).join('')}</select>`,
       hint: 'أقل كمية بيقدر الزبون يطلبها من صنف بالكيلو. مع ربع كيلو بيزيد ربع ربع، وغير هيك نص نص.',
       parse: v => Number(v),
-    },
-    fill_fee: {
-      title: 'أجرة التعبئة والتزيين',
-      input: v => `<input name="v" type="text" inputmode="numeric" dir="ltr" autocomplete="off" value="${escapeHTML(v || 0)}">`,
-      hint: 'بالليرة، وبتنضاف مرة وحدة على كل بوكس أو صحن بينطلب معبّى، وبتبيّن للزبون سطر لحالها. الفاضي ما بتنضاف عليه. اكتب 0 إذا ما في أجرة.',
-      err: 'اكتب مبلغ بالأرقام.',
-      parse: v => { const n = A.num(v); return Number.isInteger(n) && n >= 0 && n <= 1000000 ? n : null; },
     },
     schedule_max_days: {
       title: 'لحد كم يوم لقدام',

@@ -70,12 +70,18 @@
   const isBox = p => { const c = p && findCat(p.category_id); return !!(c && c.is_boxes); };
   const canFill = p => { const c = p && findCat(p.category_id); return !!(c && c.box_fill && p.unit === 'كيلو' && canOrder(p)); };
   const snapFill = q => Math.min(50, Math.max(FILL_MIN, Math.round(Number(q) / FILL_MIN) * FILL_MIN));
-  // أجرة التعبئة والتزيين: ثابتة لكل بوكس أو صحن معبّى (ملف 25)
-  const fillFee = () => Number(settings.fill_fee) || 0;
-  const fillTotal = fill => (fill || []).length
-    ? fill.reduce((sum, f) => { const p = findProduct(f.id); return p ? sum + effectivePrice(p) * f.qty : sum; }, 0) + fillFee()
-    : 0;
-  const lineTotal = l => { const p = findProduct(l.id); return p ? effectivePrice(p) * l.qty + fillTotal(l.fill) : 0; };
+  // أجرة التعبئة والتزيين لكل بوكس أو صحن (ملف 26). الثابتة بتنحسب،
+  // و«بين وبين» و«حسب الاتفاق» بتنكتب بس وبتتأكد مع المحل
+  const fillFee = p => (p && !p.fill_fee_ask && p.fill_fee_max == null && Number(p.fill_fee_min)) || 0;
+  const fillFeeText = p => {
+    if (!p) return '';
+    if (p.fill_fee_ask) return 'حسب الاتفاق';
+    if (p.fill_fee_max != null) return `بين ${formatPrice(Number(p.fill_fee_min))} و${formatPrice(Number(p.fill_fee_max))}، بتتأكد مع المحل`;
+    return fillFee(p) ? formatPrice(fillFee(p)) : '';
+  };
+  const contentsTotal = fill => (fill || []).reduce((sum, f) => { const p = findProduct(f.id); return p ? sum + effectivePrice(p) * f.qty : sum; }, 0);
+  const fillTotal = (fill, box) => (fill || []).length ? contentsTotal(fill) + fillFee(box) : 0;
+  const lineTotal = l => { const p = findProduct(l.id); return p ? effectivePrice(p) * l.qty + fillTotal(l.fill, p) : 0; };
 
   function cleanCart() {
     cart = cart.filter(l => canOrder(findProduct(l.id)));
@@ -643,7 +649,7 @@
     const boxy = ok && isBox(p) && products.some(canFill);
     let filled = false;
     let fill = [];   // [{ id, qty }]
-    const total = () => (filled ? price + fillTotal(fill) : price * qty);
+    const total = () => (filled ? price + fillTotal(fill, p) : price * qty);
 
     const sheet = openSheet(`
       <div id="pMain">
@@ -734,8 +740,8 @@
           ${fillListHTML(fill)}
           <button type="button" class="link-btn" data-fillpick>تعديل اللي جوا البوكس</button>
           <div class="o-sum"><span>البوكس</span><span>${formatPrice(price)}</span></div>
-          <div class="o-sum"><span>اللي جواه</span><span>${formatPrice(fillTotal(fill) - fillFee())}</span></div>
-          ${fillFee() ? `<div class="o-sum"><span>أجرة التعبئة والتزيين</span><span>${formatPrice(fillFee())}</span></div>` : ''}
+          <div class="o-sum"><span>اللي جواه</span><span>${formatPrice(contentsTotal(fill))}</span></div>
+          ${fillFeeText(p) ? `<div class="o-sum"><span>أجرة التعبئة والتزيين</span><span>${fillFeeText(p)}</span></div>` : ''}
         </div>`
         : '<button type="button" class="fill-pick" data-fillpick><span class="plus" aria-hidden="true">+</span>اختار شو بدك جوا البوكس</button>';
     }
@@ -743,7 +749,7 @@
     function drawFillSum() {
       const kg = fill.reduce((sum, f) => sum + f.qty, 0);
       $('#fillSum', sheet).textContent = fill.length ? `جوا البوكس: ${countLabel(fill.length)}، ${formatQty(kg, 'كيلو')}` : 'لسا ما اخترت شي';
-      $('#fillTot', sheet).textContent = formatPrice(fill.length ? fillTotal(fill) - fillFee() : 0);
+      $('#fillTot', sheet).textContent = formatPrice(contentsTotal(fill));
     }
 
     function drawFillList() {
@@ -1357,7 +1363,7 @@
     const L = [`*طلب جديد من تطبيق ${CONFIG.shopName}*`, `رقم الطلب: #${r.code}`, '', '*الأصناف:*'];
     r.items.forEach(i => {
       // اللي جوا البوكس تحت البوكس بخطوة لجوا
-      if (i.in_box && !i.product_id) { L.push(`   + ${i.name} = ${formatPrice(i.line_total)}`); return; }
+      if (i.in_box && !i.product_id) { L.push(`   + ${i.name}${Number(i.line_total) ? ` = ${formatPrice(i.line_total)}` : ''}`); return; }
       if (i.in_box) { L.push(`   + ${i.name}: ${formatQty(Number(i.qty), i.unit)} = ${formatPrice(i.line_total)}`); return; }
       L.push(`- ${i.name}${i.box_no ? ' (معبّى)' : ''}: ${formatQty(Number(i.qty), i.unit)} = ${formatPrice(i.line_total)}`);
       if (i.note) L.push(`  ملاحظة: ${i.note}`);

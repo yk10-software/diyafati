@@ -662,6 +662,9 @@ body.in-panel .toast { bottom: calc(150px + var(--safe-b)); }
 .h-link i { font-style: normal; font-weight: 600; color: var(--cocoa); }
 .h-link.has-new i { color: #B4561F; }
 .h-link.wide { grid-column: 1 / -1; }
+/* أجرة التعبئة بشاشة الصنف: خانتين جنب بعض */
+.fee-row { display: flex; gap: 8px; margin-top: 8px; }
+.fee-row input { flex: 1; min-width: 0; }
 /* رسالة للزباين: شكل الإشعار قبل ما ينبعت */
 .bc-form { padding: 14px; }
 .bc-form .field small { color: var(--muted); font-weight: 400; margin-inline-start: 6px; }

@@ -77,7 +77,7 @@ create trigger orders_status_stamp before update on public.orders
 -- fill: البوكس المعبّى (18_box_fill.sql). البوكس لازم يكون من قسم is_boxes وكميته 1،
 -- واللي جواه من أقسام box_fill وبالكيلو، من ربع كيلو وطالع والخطوة ربع.
 -- البوكس واللي جواه بياخدوا نفس box_no، واللي جواه in_box = true.
--- وإذا في أجرة تعبئة (settings.fill_fee، ملف 25)، بتنضاف سطر جوا البوكس بلا product_id.
+-- وإذا البوكس إله أجرة تعبئة (ملف 26)، بتنضاف سطر جوا البوكس بلا product_id.
 -- الأسعار اللي بيبعتها الزبون (إذا بعت) ما منستعملها أبداً.
 -- =========================================================
 create or replace function public.place_order(p_order jsonb)
@@ -98,6 +98,8 @@ declare
   v_isbox  boolean;
   v_box    int := 0;
   v_boxno  int;
+  v_feetxt text;
+  v_feeamt int;
   v_name    text := left(btrim(coalesce(p_order->>'name', '')), 80);
   v_phone   text := left(btrim(coalesce(p_order->>'phone', '')), 30);
   v_address text := left(btrim(coalesce(p_order->>'address', '')), 300);
@@ -277,17 +279,29 @@ begin
         );
       end loop;
 
-      -- أجرة التعبئة والتزيين (ملف 25): سطر لحاله جوا البوكس
-      if coalesce(s.fill_fee, 0) > 0 then
-        v_subtotal := v_subtotal + s.fill_fee;
+      -- أجرة التعبئة والتزيين (ملف 26): سطر جوا البوكس. الثابتة بتنحسب،
+      -- و«بين وبين» و«حسب الاتفاق» بتنكتب بس (سعرها 0) وبتتأكد مع المحل
+      v_feetxt := null;
+      v_feeamt := 0;
+      if pr.fill_fee_ask then
+        v_feetxt := 'أجرة التعبئة والتزيين: حسب الاتفاق';
+      elsif pr.fill_fee_max is not null then
+        v_feetxt := 'أجرة التعبئة والتزيين: بين ' || to_char(pr.fill_fee_min, 'FM999,999,999')
+                    || ' و' || to_char(pr.fill_fee_max, 'FM999,999,999') || ' ل.س، بتتأكد مع المحل';
+      elsif coalesce(pr.fill_fee_min, 0) > 0 then
+        v_feetxt := 'أجرة التعبئة والتزيين';
+        v_feeamt := pr.fill_fee_min;
+      end if;
+      if v_feetxt is not null then
+        v_subtotal := v_subtotal + v_feeamt;
         v_lines := v_lines || jsonb_build_object(
           'product_id', null,
-          'name',       'أجرة التعبئة والتزيين',
+          'name',       v_feetxt,
           'image',      null,
           'unit',       'قطعة',
           'qty',        1,
-          'unit_price', s.fill_fee,
-          'line_total', s.fill_fee,
+          'unit_price', v_feeamt,
+          'line_total', v_feeamt,
           'note',       '',
           'box_no',     v_boxno,
           'in_box',     true

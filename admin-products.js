@@ -6,6 +6,10 @@
   'use strict';
 
   const { $, state, icon, db, fail, toast } = A;
+
+  // قسم بوكسات أو صحون؟ (أصنافه بتنطلب معبّاية)
+  const isBoxCat = id => !!(state.cats.find(c => c.id === id) || {}).is_boxes;
+  const feeMode = p => p.fill_fee_ask ? 'ask' : p.fill_fee_max != null ? 'range' : p.fill_fee_min ? 'fixed' : 'none';
   const UNITS = ['كيلو', 'قطعة', 'علبة', 'باقة'];
   const NOTE_DEFAULT = 'اكتب التفاصيل اللي بدك ياها (اسم، تاريخ...)';
 
@@ -180,6 +184,21 @@
             <option value="1" ${Number(p.qty_step) === 1 ? 'selected' : ''}>كيلو</option>
           </select>
         </label>
+        <!-- أجرة التعبئة والتزيين: للبوكسات والصحون بس، وبتنضاف إذا انطلب معبّى (ملف 26) -->
+        <div class="field" data-f="fee" id="feeField" ${isBoxCat(p.category_id) ? '' : 'hidden'}>
+          <span>أجرة التعبئة والتزيين <small>(إذا انطلب معبّى)</small></span>
+          <select name="fee_mode">
+            <option value="none" ${feeMode(p) === 'none' ? 'selected' : ''}>بلا أجرة</option>
+            <option value="fixed" ${feeMode(p) === 'fixed' ? 'selected' : ''}>مبلغ ثابت</option>
+            <option value="range" ${feeMode(p) === 'range' ? 'selected' : ''}>بين وبين</option>
+            <option value="ask" ${feeMode(p) === 'ask' ? 'selected' : ''}>حسب الاتفاق</option>
+          </select>
+          <div class="fee-row" id="feeNums" ${['fixed', 'range'].includes(feeMode(p)) ? '' : 'hidden'}>
+            <input name="fee_min" type="text" inputmode="numeric" dir="ltr" autocomplete="off" placeholder="${feeMode(p) === 'range' ? 'من' : 'المبلغ'}" value="${p.fill_fee_min ?? ''}" aria-label="المبلغ">
+            <input name="fee_max" type="text" inputmode="numeric" dir="ltr" autocomplete="off" placeholder="لـ" value="${p.fill_fee_max ?? ''}" aria-label="لحد" ${feeMode(p) === 'range' ? '' : 'hidden'}>
+          </div>
+          <span class="err">اكتب المبلغ، وبـ«بين وبين» التاني لازم يكون أكبر.</span>
+        </div>
         <label class="field">
           <span>القسم</span>
           <select name="category_id">
@@ -234,6 +253,14 @@
 
     sheet.addEventListener('change', async e => {
       if (e.target.name === 'custom') { $('#noteField', sheet).hidden = !e.target.checked; return; }
+      if (e.target.name === 'category_id') { $('#feeField', sheet).hidden = !isBoxCat(Number(e.target.value)); return; }
+      if (e.target.name === 'fee_mode') {
+        const m = e.target.value;
+        $('#feeNums', sheet).hidden = !['fixed', 'range'].includes(m);
+        f.fee_max.hidden = m !== 'range';
+        f.fee_min.placeholder = m === 'range' ? 'من' : 'المبلغ';
+        return;
+      }
       if (e.target.name === 'unit') {
         $('#piecesField', sheet).hidden = $('#stepField', sheet).hidden = e.target.value !== 'كيلو';
         return;
@@ -268,7 +295,15 @@
       const pieces = kilo ? A.num(f.pieces.value) : null;
       const badPieces = pieces !== null && !(Number.isInteger(pieces) && pieces > 0);
       form.querySelector('[data-f="pieces"]').classList.toggle('invalid', badPieces);
-      if (!name || !(price > 0) || badSale || badPieces) return;
+      // الأجرة: ثابتة = مبلغ واحد، بين وبين = التاني أكبر من الأول
+      const boxCat = isBoxCat(Number(f.category_id.value));
+      const mode = boxCat ? f.fee_mode.value : 'none';
+      const feeMin = ['fixed', 'range'].includes(mode) ? A.num(f.fee_min.value) : null;
+      const feeMax = mode === 'range' ? A.num(f.fee_max.value) : null;
+      const badFee = (['fixed', 'range'].includes(mode) && !(Number.isInteger(feeMin) && feeMin > 0))
+        || (mode === 'range' && !(Number.isInteger(feeMax) && feeMax > feeMin));
+      form.querySelector('[data-f="fee"]').classList.toggle('invalid', badFee);
+      if (!name || !(price > 0) || badSale || badPieces || badFee) return;
 
       A.busy(form, true);
       const uploaded = [];
@@ -288,6 +323,9 @@
           featured: f.featured.checked,
           pieces_per_kg: pieces,
           qty_step: kilo && f.qty_step.value ? Number(f.qty_step.value) : null,
+          fill_fee_min: feeMin,
+          fill_fee_max: feeMax,
+          fill_fee_ask: mode === 'ask',
           sale_until: sale === null ? null : A.endOfDay(f.sale_until.value),
           unit: f.unit.value,
           category_id: f.category_id.value ? Number(f.category_id.value) : null,
